@@ -39,9 +39,12 @@ namespace ReforgedUpdater
 
         /// <summary>
         /// Applies the game's own saved Data folder, unless this run already chose one
-        /// (--data, or a path that pointed straight at a Data folder).
+        /// (--data, or a path that pointed straight at a Data folder). A saved folder that is
+        /// gone is an error, unless <paramref name="keepIfMissing"/> is set: the "data" command
+        /// passes it so it can still reset or replace the setting, and gets the default Data folder.
         /// </summary>
-        public static WowInstall ApplySavedData(WowInstall wow, string explicitData)
+        public static WowInstall ApplySavedData(WowInstall wow, string explicitData, string gameName = null,
+                                                bool keepIfMissing = false)
         {
             if (!string.IsNullOrWhiteSpace(explicitData) || wow.DataIsCustom) return wow;
 
@@ -51,10 +54,21 @@ namespace ReforgedUpdater
             try { return wow.WithData(state.DataPath); }
             catch (UpdaterException)
             {
+                if (keepIfMissing) return wow;
+
+                string pick = gameName != null ? "--game " + gameName : "--wow \"" + wow.Root + "\"";
                 throw new UpdaterException("This game's saved Data folder no longer exists: " + state.DataPath
-                                           + ". Reconnect the drive, or reset it with:  ReforgedUpdater data --default --wow \""
-                                           + wow.Root + "\"");
+                                           + ". Reconnect the drive, or go back to the game's own Data folder with:  "
+                                           + "ReforgedUpdater data --default " + pick);
             }
+        }
+
+        /// <summary>The game's saved Data folder when one is set but is no longer there, otherwise null.</summary>
+        public static string MissingSavedData(string root)
+        {
+            var state = Store.Load<InstallState>(WowInstall.StatePathFor(root));
+            if (string.IsNullOrWhiteSpace(state.DataPath) || Directory.Exists(state.DataPath)) return null;
+            return state.DataPath;
         }
 
         public static void SaveGameDataPath(string root, string dataPath)

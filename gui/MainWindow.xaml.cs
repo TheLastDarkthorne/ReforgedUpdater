@@ -214,12 +214,25 @@ namespace ReforgedUpdater.Gui
 
         private async Task OpenGameAsync(GameChoice game, bool refetchSite)
         {
+            // A saved Data folder that is gone stops the game from opening, and with it the menu
+            // that resets the folder, so the reset is offered here instead.
+            string missing = !IsBusy && Directory.Exists(game.Path) ? Workspace.MissingSavedData(game.Path) : null;
+            if (missing != null && CuteDialog.Show(this, "Where did the Data folder go?",
+                    game.Name + "'s patches are set to go to " + missing + ", but that folder isn't there anymore. "
+                    + "If it's on a drive that isn't connected, plug it in and press Not now. "
+                    + "Or I can use the game's own Data folder instead.",
+                    "Use the game's own Data folder", "Not now", MascotMood.Oops))
+            {
+                Workspace.SaveGameDataPath(game.Path, null);
+                AddLog(UiLevel.Good, "Data folder for " + game.Name + " is back to " + Path.Combine(game.Path, "Data") + ".");
+            }
+
             await RunAsync("Looking at " + game.Name + "...", async ct =>
             {
                 CloseGame();
                 _currentGame = game;
 
-                _wow = Workspace.ApplySavedData(WowInstall.Open(game.Path), null);
+                _wow = Workspace.ApplySavedData(WowInstall.Open(game.Path), null, game.Registered ? game.Name : null);
                 _updater = new Updater(_wow, _settings);
                 HasGame = true;
                 DataFolder = _wow.DataDir + (_wow.DataIsCustom ? "  (moved)" : string.Empty);

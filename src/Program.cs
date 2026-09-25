@@ -159,7 +159,7 @@ namespace ReforgedUpdater
 
                 try
                 {
-                    var wow = Workspace.ApplySavedData(WowInstall.Open(game.Path), explicitData: null);
+                    var wow = Workspace.ApplySavedData(WowInstall.Open(game.Path), explicitData: null, game.Name);
                     int code = await RunForGameAsync(cli, settings, wow, game.Name, ct).ConfigureAwait(false);
 
                     if (code == ExitError) failed.Add(game.Name);
@@ -430,6 +430,8 @@ namespace ReforgedUpdater
                 Ui.Info("Client:        " + wow.Root);
                 Ui.Info("Data folder:   " + (updater.State.DataPath ?? "<default: the client's own Data folder>"));
                 Ui.Info("Resolves to:   " + wow.DataDir);
+                if (!string.IsNullOrEmpty(updater.State.DataPath) && !Directory.Exists(updater.State.DataPath))
+                    Ui.Warn("The saved Data folder no longer exists. Reconnect the drive, or reset it with --default.");
                 Ui.Info(string.Empty);
                 Ui.Info("Set it with:     ReforgedUpdater data \"D:\\Games\\WoW\\Data\"");
                 Ui.Info("Back to default: ReforgedUpdater data --default");
@@ -584,11 +586,13 @@ namespace ReforgedUpdater
 
         /// <summary>
         /// Picks the game for this run: --game, then --wow, then the last one used, then
-        /// autodetection. The game's own saved Data folder is applied on top.
+        /// autodetection. The game's own saved Data folder is applied on top; the "data" command
+        /// still runs when that folder is gone, since it is how the setting gets fixed.
         /// </summary>
         private static WowInstall ResolveInstall(CommandLine cli, Settings settings, out string gameName)
         {
             string explicitData = cli.Option("data");
+            bool keepIfMissing = cli.Command == "data";
             string requestedGame = cli.Option("game");
             string explicitPath = cli.Option("wow") ?? cli.Option("path");
             WowInstall wow;
@@ -601,7 +605,7 @@ namespace ReforgedUpdater
                 var game = settings.FindGame(requestedGame)
                            ?? throw new UpdaterException("No game named \"" + requestedGame + "\". " + RegisteredNames(settings));
                 gameName = game.Name;
-                return Workspace.ApplySavedData(WowInstall.Open(game.Path, explicitData), explicitData);
+                return Workspace.ApplySavedData(WowInstall.Open(game.Path, explicitData), explicitData, gameName, keepIfMissing);
             }
 
             if (!string.IsNullOrWhiteSpace(explicitPath))
@@ -632,7 +636,7 @@ namespace ReforgedUpdater
             WowInstall Finish(WowInstall resolved, out string name)
             {
                 name = settings.FindGameByPath(resolved.Root)?.Name;
-                return Workspace.ApplySavedData(resolved, explicitData);
+                return Workspace.ApplySavedData(resolved, explicitData, name, keepIfMissing);
             }
         }
 
