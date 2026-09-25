@@ -83,17 +83,26 @@ isn't available any more. Do one of the following:
 - To use the game's own `Data` folder again, run the following command:
 
   ```bash
-  ReforgedUpdater data --default --game NAME --data "GAME_FOLDER\Data"
+  ReforgedUpdater data --default --game NAME
   ```
 
-  Replace the following:
+  Replace `NAME` with the game's nickname. The message shows the exact command
+  for your game. For a game that isn't registered, the message uses
+  `--wow "GAME_FOLDER"` instead of `--game NAME`.
 
-  - `NAME`: the game's nickname.
-  - `GAME_FOLDER`: the folder that contains `Wow.exe`.
+- To move the patches to a different folder, run the following command:
 
-  The `--data` option lets the command run without the missing folder. The
-  command then clears the saved setting. The `Data` folder in the game folder
-  must exist.
+  ```bash
+  ReforgedUpdater data "NEW_FOLDER" --game NAME
+  ```
+
+  Replace `NEW_FOLDER` with the folder that you want to use. The folder must
+  exist.
+
+In the window, the updater asks what to do when you open the game. Click
+**Use the game's own Data folder** to clear the saved setting and open the
+game. If you plan to reconnect the drive, connect it first, and then click
+**Not now**.
 
 ## A patch shows Update ready right after you adopt it
 
