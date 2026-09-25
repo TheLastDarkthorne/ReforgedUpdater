@@ -1,0 +1,490 @@
+<Window x:Class="ReforgedUpdater.Gui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:ReforgedUpdater.Gui"
+        Title="Reforged Updater" Icon="Assets/app.ico"
+        Width="1080" Height="760" MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
+        Background="{DynamicResource WindowBackground}"
+        FontFamily="{StaticResource UiFont}" Foreground="{DynamicResource Ink}"
+        TextOptions.TextFormattingMode="Display"
+        UseLayoutRounding="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="42" ResizeBorderThickness="6" CornerRadius="0"
+                      GlassFrameThickness="0,0,0,1" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo x:Name="Taskbar" />
+    </Window.TaskbarItemInfo>
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+
+        <!-- ============================================ module card -->
+        <DataTemplate x:Key="ModuleCard">
+            <Grid x:Name="CardRoot" Margin="7" Height="186" RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <TranslateTransform />
+                </Grid.RenderTransform>
+                <Border x:Name="CardShadow" Background="{DynamicResource Surface}" CornerRadius="20" Effect="{DynamicResource SoftShadow}" />
+                <Border Background="{DynamicResource Surface}" CornerRadius="20" BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                        Padding="16,14,14,12" ToolTip="{Binding Tooltip}" ToolTipService.InitialShowDelay="700">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- letter bubble, names, state pill -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="44" Height="44" CornerRadius="15" Background="{Binding BubbleSoft}">
+                                <TextBlock Text="{Binding Letter}" FontFamily="{StaticResource DisplayFont}" FontSize="19"
+                                           FontWeight="Bold" Foreground="{Binding BubbleBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,1,8,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource Caption}" FontSize="12.5"
+                                           TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
+                            </StackPanel>
+                            <Border Grid.Column="2" Background="{Binding AccentSoft}" CornerRadius="11" Padding="9,4,10,4"
+                                    VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Glyph}" Text="{Binding StateGlyph}" FontSize="10.5"
+                                               Foreground="{Binding Accent}" Margin="0,0,5,0" />
+                                    <TextBlock Text="{Binding StateText}" FontSize="11.5" FontWeight="SemiBold" Foreground="{Binding Accent}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock Grid.Row="1" Text="{Binding Description}" Style="{StaticResource Caption}" FontSize="12.5"
+                                   LineHeight="18" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                   MaxHeight="36" Margin="2,10,2,0" VerticalAlignment="Top" />
+
+                        <TextBlock Grid.Row="2" Text="{Binding VersionLine}" FontSize="12" Margin="2,4,2,0"
+                                   TextTrimming="CharacterEllipsis" Opacity="0.85" />
+
+                        <Grid Grid.Row="3" Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Badges}" Style="{StaticResource Caption}" FontSize="11.5"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="2,0,8,0" />
+                            <Button Grid.Column="1" Style="{StaticResource IconButton}" Content="&#xE74D;" FontSize="13"
+                                    ToolTip="Remove this patch" Margin="0,0,4,0" Click="OnRemoveModule"
+                                    AutomationProperties.Name="{Binding RemoveName}"
+                                    Visibility="{Binding CanRemove, Converter={StaticResource BoolVis}}" />
+                            <Button Grid.Column="2" Style="{StaticResource ChipButton}" Background="{Binding Accent}" Foreground="{DynamicResource OnAccent}"
+                                    Click="OnModuleAction" Visibility="{Binding HasAction, Converter={StaticResource BoolVis}}"
+                                    AutomationProperties.Name="{Binding ActionName}">
+                                <TextBlock Text="{Binding ActionText}" />
+                            </Button>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center"
+                                        Visibility="{Binding IsCurrent, Converter={StaticResource BoolVis}}">
+                                <TextBlock Style="{StaticResource Glyph}" Text="&#xEB52;" FontSize="12" Foreground="{DynamicResource Pink}"
+                                           Margin="0,0,6,0" />
+                                <TextBlock Text="All good" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource Mint}" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="CardRoot" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="CardShadow" Property="Effect" Value="{DynamicResource LiftShadow}" />
+                    <Setter TargetName="CardRoot" Property="RenderTransform">
+                        <Setter.Value>
+                            <TranslateTransform Y="-2" />
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="GameItem">
+            <StackPanel>
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Hint}" Style="{StaticResource Caption}" FontSize="11.5" TextTrimming="CharacterEllipsis"
+                           MaxWidth="380" />
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- The closed combo box shows only the name. -->
+        <DataTemplate x:Key="GameItemCompact">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+        </DataTemplate>
+
+        <local:GameTemplateSelector x:Key="GameTemplates" Full="{StaticResource GameItem}" Compact="{StaticResource GameItemCompact}" />
+    </Window.Resources>
+
+    <Border x:Name="Frame">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="42" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- ======================================== title bar -->
+            <Grid>
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                    <Image Source="Assets/app.ico" Width="18" Height="18" Margin="0,0,9,0"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="Reforged Updater" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text=" · HD patches for WotLK and vanilla" FontSize="12.5" Foreground="{DynamicResource Muted}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button x:Name="ThemeButton" Style="{StaticResource CaptionButton}" Content="&#xE708;" FontSize="13"
+                            Click="OnToggleTheme" ToolTip="Dark mode" AutomationProperties.Name="Dark mode" />
+                    <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimize"
+                            AutomationProperties.Name="Minimize" />
+                    <Button x:Name="MaxButton" Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="OnMaximize"
+                            ToolTip="Maximize" AutomationProperties.Name="Maximize" />
+                    <Button Style="{StaticResource CloseCaptionButton}" Content="&#xE8BB;" Click="OnClose" ToolTip="Close"
+                            AutomationProperties.Name="Close" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ======================================== hero: Belora and what's going on -->
+            <Grid Grid.Row="1" Margin="26,6,26,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <local:Mascot x:Name="Buddy" Width="92" Height="92" Mood="{Binding Mood}" VerticalAlignment="Center" />
+
+                <Grid Grid.Column="1" Margin="10,0,20,0" VerticalAlignment="Center" HorizontalAlignment="Left">
+                    <Border Background="{DynamicResource Surface}" CornerRadius="20" Effect="{DynamicResource SoftShadow}" Margin="10,0,0,0" />
+                    <Path Data="M12,0 L0,9 L12,18 Z" Fill="{DynamicResource Surface}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,0,0" />
+                    <StackPanel Margin="30,14,24,14">
+                        <TextBlock Text="{Binding Bubble}" FontFamily="{StaticResource DisplayFont}" FontSize="20" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding BubbleSub}" Style="{StaticResource Caption}" FontSize="13" Margin="0,3,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource SoftButton}" Click="OnCheck" IsEnabled="{Binding CanCheck}" Margin="0,0,10,0"
+                            AutomationProperties.Name="Check again"
+                            ToolTip="Look at the downloads page again and ask the server about every file">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE72C;" Foreground="{DynamicResource Pink}" Margin="0,0,8,0" />
+                            <TextBlock Text="Check again" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource PrimaryButton}" Click="OnPrimary" IsEnabled="{Binding CanPrimary}"
+                            Padding="20,11" AutomationProperties.Name="{Binding PrimaryText}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE896;" Margin="0,0,9,0" />
+                            <TextBlock Text="{Binding PrimaryText}" FontSize="14" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- ======================================== game strip -->
+            <Border Grid.Row="2" Margin="26,20,26,4" Background="{DynamicResource Strip}" CornerRadius="18" Padding="14,10"
+                    BorderBrush="{DynamicResource StripBorder}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE7FC;" Foreground="{DynamicResource Pink}" Margin="2,0,10,0" />
+                        <ComboBox x:Name="GamePicker" Style="{StaticResource CuteCombo}" MinWidth="170" MaxWidth="260"
+                                  ItemsSource="{Binding Games}" ItemTemplateSelector="{StaticResource GameTemplates}"
+                                  SelectionChanged="OnGameChanged" IsEnabled="{Binding IsIdle}" ToolTip="Which game to look after" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xE710;" Margin="4,0,0,0" Click="OnAddGame"
+                                IsEnabled="{Binding IsIdle}" ToolTip="Add a game" AutomationProperties.Name="Add a game" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0"
+                                Visibility="{Binding HasGame, Converter={StaticResource BoolVis}}">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE8F1;" Foreground="{DynamicResource Lilac}" Margin="0,0,10,0" />
+                        <ComboBox x:Name="EditionPicker" Style="{StaticResource CuteCombo}" MinWidth="190"
+                                  ItemsSource="{Binding Editions}" DisplayMemberPath="Title"
+                                  SelectionChanged="OnEditionChanged" IsEnabled="{Binding IsIdle}"
+                                  ToolTip="Which patch set this game uses" />
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Margin="18,0,12,0" HorizontalAlignment="Left" Cursor="Hand" Click="OnOpenData"
+                            Visibility="{Binding HasGame, Converter={StaticResource BoolVis}}" ToolTip="Open the Data folder"
+                            AutomationProperties.Name="Open the Data folder">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" Background="Transparent" CornerRadius="12" Padding="8,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE8B7;" Foreground="{DynamicResource Butter}"
+                                                   Margin="0,0,9,0" />
+                                        <TextBlock Text="{Binding DataFolder}" Foreground="{DynamicResource Muted}" FontSize="12.5"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Highlight}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource SoftButton}" Padding="12,6" Margin="0,0,6,0" Click="OnAdoptAll"
+                                Visibility="{Binding HasUntracked, Converter={StaticResource BoolVis}}" IsEnabled="{Binding IsIdle}"
+                                AutomationProperties.Name="{Binding AdoptText}"
+                                ToolTip="Register patches you downloaded by hand. Reads each file to be sure it's the published build.">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" Foreground="{DynamicResource Butter}" Margin="0,0,7,0" />
+                                <TextBlock Text="{Binding AdoptText}" FontSize="12.5" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IconButton}" Content="&#xE81C;" Click="OnToggleLog" ToolTip="Activity log"
+                                AutomationProperties.Name="Activity log" />
+                        <Button x:Name="MoreButton" Style="{StaticResource IconButton}" Content="&#xE712;" Click="OnMore"
+                                ToolTip="More" AutomationProperties.Name="More">
+                            <Button.ContextMenu>
+                                <ContextMenu x:Name="MoreMenu">
+                                    <MenuItem Header="Install every patch" Click="OnInstallAll" x:Name="InstallAllItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Check file contents (slow)" Click="OnVerifyDeep" x:Name="VerifyItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE9D5;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Open the game folder" Click="OnOpenGame" x:Name="OpenGameItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE838;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Move the Data folder…" Click="OnChangeData" x:Name="ChangeDataItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8DE;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Use the game's own Data folder" Click="OnResetData" x:Name="ResetDataItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE777;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Forget this game" Click="OnForgetGame" x:Name="ForgetItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE74D;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator />
+                                    <MenuItem Header="Match the Windows theme" Click="OnFollowWindowsTheme" x:Name="FollowThemeItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE790;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open the downloads page" Click="OnOpenSite">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE774;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Open the command-line updater" Click="OnOpenCli">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE756;" /></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ======================================== modules -->
+            <ScrollViewer x:Name="Scroller" Grid.Row="3" VerticalScrollBarVisibility="Auto" Padding="19,4,19,12"
+                          SizeChanged="OnScrollerSized" Visibility="{Binding ShowModules, Converter={StaticResource BoolVis}}">
+                <!-- A ListBox rather than a bare ItemsControl, so screen readers can reach each card's buttons. -->
+                <ListBox x:Name="ModuleList" ItemTemplate="{StaticResource ModuleCard}" IsEnabled="{Binding IsIdle}"
+                         AutomationProperties.Name="Patches" Foreground="{DynamicResource Ink}">
+                    <ListBox.Template>
+                        <ControlTemplate TargetType="ListBox">
+                            <ItemsPresenter />
+                        </ControlTemplate>
+                    </ListBox.Template>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Focusable" Value="False" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding Title}" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <ContentPresenter />
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <!-- The stock container indents the items by 5px, which throws off the column maths. -->
+                            <GroupStyle.ContainerStyle>
+                                <Style TargetType="GroupItem">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="GroupItem">
+                                                <StackPanel>
+                                                    <ContentPresenter />
+                                                    <ItemsPresenter />
+                                                </StackPanel>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </GroupStyle.ContainerStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="10,16,0,4">
+                                        <TextBlock Style="{StaticResource Glyph}" Text="&#xEB52;" FontSize="12" Foreground="{DynamicResource Pink}"
+                                                   Margin="0,1,9,0" />
+                                        <TextBlock Text="{Binding Name}" FontFamily="{StaticResource DisplayFont}" FontSize="15.5"
+                                                   FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <Border Background="{DynamicResource LilacSoft}" CornerRadius="9" Padding="8,1" Margin="10,0,0,0"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ItemCount}" FontSize="11.5" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Lilac}" />
+                                        </Border>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemWidth="{Binding CardWidth, RelativeSource={RelativeSource AncestorType=Window}}" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                </ListBox>
+            </ScrollViewer>
+
+            <!-- ======================================== no game yet -->
+            <StackPanel Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="460"
+                        Visibility="{Binding ShowEmpty, Converter={StaticResource BoolVis}}">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE7FC;" FontSize="40" Foreground="{DynamicResource HoverBorder}" HorizontalAlignment="Center" />
+                <TextBlock Text="No game folder yet" FontFamily="{StaticResource DisplayFont}" FontSize="22" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" Margin="0,14,0,0" />
+                <TextBlock Style="{StaticResource Caption}" FontSize="13.5" TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Text="Point me at the folder with Wow.exe in it. I'll remember it, and the command-line updater will too." />
+                <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center" Margin="0,20,0,0" Click="OnAddGame"
+                        AutomationProperties.Name="Choose game folder">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Glyph}" Text="&#xE8B7;" Margin="0,0,9,0" />
+                        <TextBlock Text="Choose game folder" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+
+            <!-- ======================================== vanilla, but which server? -->
+            <StackPanel Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="520"
+                        Visibility="{Binding ShowNeedsEdition, Converter={StaticResource BoolVis}}">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE8F1;" FontSize="40" Foreground="{DynamicResource Lilac}" HorizontalAlignment="Center" />
+                <TextBlock Text="Which vanilla server is this for?" FontFamily="{StaticResource DisplayFont}" FontSize="22"
+                           FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,14,0,0" />
+                <TextBlock Style="{StaticResource Caption}" FontSize="13.5" TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0"
+                           Text="Every 1.12 client has the same Wow.exe, but a few patches are built per server. I'll remember your answer." />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
+                    <Button Style="{StaticResource SoftButton}" Margin="0,0,10,0" Padding="18,10" Click="OnPickEdition" Tag="kronos"
+                            AutomationProperties.Name="Kronos">
+                        <StackPanel>
+                            <TextBlock Text="Kronos" FontSize="14" HorizontalAlignment="Center" />
+                            <TextBlock Text="standard 1.12 client" Style="{StaticResource Caption}" FontWeight="Normal" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource SoftButton}" Padding="18,10" Click="OnPickEdition" Tag="turtle"
+                            AutomationProperties.Name="Turtle WoW">
+                        <StackPanel>
+                            <TextBlock Text="Turtle WoW" FontSize="14" HorizontalAlignment="Center" />
+                            <TextBlock Text="and Turtle-based servers" Style="{StaticResource Caption}" FontWeight="Normal" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ======================================== progress -->
+            <Border Grid.Row="4" Margin="26,4,26,14" Background="{DynamicResource Surface}" CornerRadius="20" Padding="20,14,16,16"
+                    Effect="{DynamicResource LiftShadow}" Visibility="{Binding IsBusy, Converter={StaticResource BoolVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="{Binding ProgressTitle}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding ProgressDetail}" Style="{StaticResource Caption}" FontSize="12.5" Margin="0,2,0,0"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Grid.RowSpan="2" Style="{StaticResource SoftButton}" VerticalAlignment="Center"
+                            Margin="16,0,0,0" Click="OnCancel" IsEnabled="{Binding CanCancel}"
+                            AutomationProperties.Name="Stop">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Glyph}" Text="&#xE71A;" Foreground="{DynamicResource Berry}" Margin="0,0,7,0" />
+                            <TextBlock Text="Stop" />
+                        </StackPanel>
+                    </Button>
+                    <ProgressBar Grid.Row="1" Style="{StaticResource CandyProgress}" Margin="0,10,0,0"
+                                 Value="{Binding ProgressValue}" IsIndeterminate="{Binding ProgressIndeterminate}" />
+                </Grid>
+            </Border>
+
+            <!-- ======================================== activity log -->
+            <Border Grid.Row="5" Margin="26,0,26,16" Background="{DynamicResource LogBackground}" CornerRadius="18" Padding="14,10,8,10"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="1"
+                    Visibility="{Binding ShowLog, Converter={StaticResource BoolVis}}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="2,0,0,6">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="10"
+                                Content="&#xE8BB;" Click="OnToggleLog" ToolTip="Hide" />
+                        <TextBlock Text="Activity" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <ListBox x:Name="LogList" ItemsSource="{Binding Log}" MaxHeight="150" Background="Transparent" BorderThickness="0"
+                             Foreground="{DynamicResource Ink}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter Margin="2,2" />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="62" />
+                                        <ColumnDefinition Width="22" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Time}" Style="{StaticResource Caption}" FontSize="11.5" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource Glyph}" Text="{Binding Glyph}" FontSize="11"
+                                               Foreground="{Binding Brush}" VerticalAlignment="Top" Margin="0,2,0,0" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Text}" FontSize="12" TextWrapping="Wrap" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

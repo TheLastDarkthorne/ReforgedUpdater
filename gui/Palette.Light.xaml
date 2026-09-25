@@ -1,0 +1,62 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+        Light palette: blush and lavender. Palette.Dark.xaml defines the same keys; the window
+        swaps one for the other, so everything that changes with the theme is looked up with
+        DynamicResource.
+    -->
+
+    <LinearGradientBrush x:Key="WindowBackground" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="#FFF8FB" />
+        <GradientStop Offset="1" Color="#F3EDFF" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="Ink" Color="#4B3A5E" />
+    <SolidColorBrush x:Key="Muted" Color="#9786AC" />
+    <SolidColorBrush x:Key="Line" Color="#F0E1EF" />
+
+    <!-- surfaces: cards, dialogs, pop-ups, and their hover states -->
+    <SolidColorBrush x:Key="Surface" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="SurfaceAlt" Color="#FFF6FA" />
+    <SolidColorBrush x:Key="Highlight" Color="#FFF0F6" />
+    <SolidColorBrush x:Key="HoverBorder" Color="#FFB3D3" />
+    <SolidColorBrush x:Key="Control" Color="#E3CFE6" />
+    <SolidColorBrush x:Key="Strip" Color="#99FFFFFF" />
+    <SolidColorBrush x:Key="StripBorder" Color="#80FFFFFF" />
+    <SolidColorBrush x:Key="LogBackground" Color="#CCFFFFFF" />
+    <SolidColorBrush x:Key="Thumb" Color="#E7D3EC" />
+    <SolidColorBrush x:Key="CaptionHover" Color="#14000000" />
+    <SolidColorBrush x:Key="TooltipBackground" Color="#4B3A5E" />
+    <SolidColorBrush x:Key="TooltipInk" Color="#FFFFFF" />
+
+    <!-- accents, each with a soft tint for pills and bubbles -->
+    <SolidColorBrush x:Key="Pink" Color="#F2629F" />
+    <SolidColorBrush x:Key="PinkSoft" Color="#FFE3EF" />
+    <SolidColorBrush x:Key="Lilac" Color="#8B6CF0" />
+    <SolidColorBrush x:Key="LilacSoft" Color="#EEE7FF" />
+    <SolidColorBrush x:Key="Mint" Color="#23A57A" />
+    <SolidColorBrush x:Key="MintSoft" Color="#DBF5EA" />
+    <SolidColorBrush x:Key="Peach" Color="#E5712F" />
+    <SolidColorBrush x:Key="PeachSoft" Color="#FFE8D8" />
+    <SolidColorBrush x:Key="Sky" Color="#3F83DB" />
+    <SolidColorBrush x:Key="SkySoft" Color="#E1EDFF" />
+    <SolidColorBrush x:Key="Butter" Color="#B8860B" />
+    <SolidColorBrush x:Key="ButterSoft" Color="#FFF2C9" />
+    <SolidColorBrush x:Key="Berry" Color="#DD3D63" />
+    <SolidColorBrush x:Key="BerrySoft" Color="#FFE0E7" />
+    <!-- text on a solid accent -->
+    <SolidColorBrush x:Key="OnAccent" Color="#FFFFFF" />
+
+    <DropShadowEffect x:Key="SoftShadow" Color="#E6B8D6" BlurRadius="22" ShadowDepth="4" Direction="270" Opacity="0.35" />
+    <DropShadowEffect x:Key="LiftShadow" Color="#E6B8D6" BlurRadius="28" ShadowDepth="6" Direction="270" Opacity="0.55" />
+
+    <!-- Belora's everyday outfit: a mint tunic -->
+    <Color x:Key="TunicTop">#B4F0D4</Color>
+    <Color x:Key="TunicBottom">#6FD3A7</Color>
+    <SolidColorBrush x:Key="TunicStroke" Color="#3FA97C" />
+    <SolidColorBrush x:Key="Collar" Color="#3FA97C" />
+    <SolidColorBrush x:Key="Belt" Color="#C8923A" />
+    <SolidColorBrush x:Key="Buckle" Color="#FFD97A" />
+    <SolidColorBrush x:Key="BuckleStroke" Color="#C8923A" />
+    <SolidColorBrush x:Key="MascotShadow" Color="#1F4B3A5E" />
+</ResourceDictionary>
