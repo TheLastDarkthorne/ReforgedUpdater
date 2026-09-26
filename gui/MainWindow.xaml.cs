@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Shell;
 using Microsoft.Win32;
 
@@ -30,6 +31,8 @@ namespace ReforgedUpdater.Gui
         private Updater _updater;
         private List<CatalogEntry> _catalog;
         private List<ModuleStatus> _rows = new List<ModuleStatus>();
+        private List<ModuleItem> _items = new List<ModuleItem>();
+        private readonly HashSet<string> _picks = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // ticked module ids
         private CancellationTokenSource _cancel;
         private DateTime _lastCheck;
         private bool _syncing;      // set while code, not the user, moves a picker
@@ -89,7 +92,8 @@ namespace ReforgedUpdater.Gui
         private void RaiseCommands()
         {
             foreach (string name in new[] { nameof(IsIdle), nameof(CanCheck), nameof(CanPrimary), nameof(PrimaryText),
-                                            nameof(HasUntracked), nameof(AdoptText), nameof(ShowModules) })
+                                            nameof(HasUntracked), nameof(AdoptText), nameof(ShowModules),
+                                            nameof(HasPicks) })
                 Raise(name);
         }
 
@@ -155,11 +159,15 @@ namespace ReforgedUpdater.Gui
         public bool CanCheck => IsIdle && HasGame && !ShowNeedsEdition;
         private bool FreshGame => _rows.Count > 0 && _rows.All(r => r.Local == null) && !HasUntracked;
 
-        /// <summary>The big button: update what changed, or on a fresh game, install everything.</summary>
-        public bool CanPrimary => IsIdle && !ShowNeedsEdition && (UpdateCount > 0 || FreshGame);
+        /// <summary>
+        /// The big button: get the ticked patches; otherwise update what changed, or on a fresh
+        /// game, install everything.
+        /// </summary>
+        public bool CanPrimary => IsIdle && !ShowNeedsEdition && (HasPicks || UpdateCount > 0 || FreshGame);
 
         public string PrimaryText =>
-            UpdateCount > 1 ? "Update " + UpdateCount + " patches"
+            HasPicks ? PicksVerb + " " + _picks.Count + " selected"
+            : UpdateCount > 1 ? "Update " + UpdateCount + " patches"
             : UpdateCount == 1 ? "Update 1 patch"
             : FreshGame ? "Install all patches"
             : "All caught up";
@@ -167,6 +175,20 @@ namespace ReforgedUpdater.Gui
         public string AdoptText => UntrackedCount == 1 ? "Adopt 1 file I found" : "Adopt " + UntrackedCount + " files I found";
 
         private List<ModuleStatus> UntrackedRows() => _rows.Where(r => r.State == ModuleState.Untracked).ToList();
+
+        public bool HasPicks => _picks.Count > 0;
+
+        /// <summary>The ticked patches, in the order the site lists them.</summary>
+        private List<ModuleStatus> PickedRows() => _rows.Where(r => _picks.Contains(r.Entry.Id)).ToList();
+
+        private string PicksVerb
+        {
+            get
+            {
+                var picked = PickedRows();
+                return picked.All(r => r.Local == null) ? "Install" : picked.All(r => r.Local != null) ? "Update" : "Get";
+            }
+        }
 
         // ================================================================ start-up and games
 
@@ -266,6 +288,8 @@ namespace ReforgedUpdater.Gui
             _wow = null;
             _catalog = null;
             _rows = new List<ModuleStatus>();
+            _items = new List<ModuleItem>();
+            _picks.Clear();
             ModuleList.ItemsSource = null;
             HasGame = false;
             ShowNeedsEdition = false;
@@ -295,6 +319,16 @@ namespace ReforgedUpdater.Gui
         private void ShowRows()
         {
             var items = _rows.Select(r => new ModuleItem(r, _wow.DataDir)).ToList();
+
+            // Ticks survive a re-check, except on patches that no longer need downloading.
+            _picks.RemoveWhere(id => !items.Any(i => i.CanSelect && string.Equals(i.Status.Entry.Id, id, StringComparison.OrdinalIgnoreCase)));
+            foreach (var item in items)
+            {
+                item.IsSelected = _picks.Contains(item.Status.Entry.Id);
+                item.PropertyChanged += OnPickChanged;
+            }
+            _items = items;
+
             var view = new ListCollectionView(items);
             view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ModuleItem.Group)));
             ModuleList.ItemsSource = view;
@@ -318,7 +352,8 @@ namespace ReforgedUpdater.Gui
                 Say("I found " + (untracked == 1 ? "a patch" : untracked + " patches") + " you already have",
                     "Adopt them and I'll keep them up to date. " + sub, MascotMood.Excited);
             else if (installed == 0)
-                Say("Nothing installed yet", "Pick a patch below and press Install. " + sub, MascotMood.Idle);
+                Say("Nothing installed yet", "Tick the patches you want, or install them all with the button up top. " + sub,
+                    MascotMood.Idle);
             else
                 Say("Everything's up to date!", sub, MascotMood.Happy);
         }
@@ -427,15 +462,32 @@ namespace ReforgedUpdater.Gui
 
             await RunAsync("Getting ready...", async ct =>
             {
+                // One unreachable patch should not hold back the rest of a batch.
+                var skipped = new List<ModuleStatus>();
                 foreach (var row in rows.Where(r => r.Remote == null))
-                    row.Remote = await _updater.ProbeAsync(row.Entry.Url, ct);
+                {
+                    try { row.Remote = await _updater.ProbeAsync(row.Entry.Url, ct); }
+                    catch (Exception ex) when (!(ex is OperationCanceledException))
+                    {
+                        Ui.Warn(row.Entry.Display + ": could not reach the server (" + ex.Message + ")");
+                        skipped.Add(row);
+                    }
+                }
+                if (skipped.Count == rows.Count)
+                    throw new UpdaterException(rows.Count == 1
+                        ? "I couldn't reach the server for " + rows[0].Entry.Display + "."
+                        : "I couldn't reach the server for any of those patches.");
+                rows = rows.Except(skipped).ToList();
 
                 long total = rows.Sum(r => Math.Max(0, r.Remote.Size));
                 string what = rows.Count == 1 ? rows[0].Entry.Display : rows.Count + " patches";
+                string left = skipped.Count == 0 ? string.Empty
+                    : "\n\nI couldn't reach the server for " + string.Join(", ", skipped.Select(r => r.Entry.Display))
+                      + ", so I'll leave " + (skipped.Count == 1 ? "it" : "them") + " out this time.";
 
                 bool go = CuteDialog.Show(this, verb + " " + what + "?",
                     "That's " + Ui.Bytes(total) + " to download into " + _wow.DataDir + ".\n\n"
-                    + "If the connection drops, I'll pick up where I left off.",
+                    + "If the connection drops, I'll pick up where I left off." + left,
                     verb, "Not now", MascotMood.Excited);
                 if (!go) return;
 
@@ -569,7 +621,8 @@ namespace ReforgedUpdater.Gui
 
         private async void OnPrimary(object sender, RoutedEventArgs e)
         {
-            if (UpdateCount > 0) await DownloadAsync(_rows.Where(r => r.Local != null && r.NeedsDownload).ToList(), "Update");
+            if (HasPicks) await DownloadAsync(PickedRows(), PicksVerb);
+            else if (UpdateCount > 0) await DownloadAsync(_rows.Where(r => r.Local != null && r.NeedsDownload).ToList(), "Update");
             else await InstallAllAsync();
         }
 
@@ -629,6 +682,45 @@ namespace ReforgedUpdater.Gui
 
             if (item.Status.State == ModuleState.Untracked) await AdoptAsync(new List<ModuleStatus> { item.Status });
             else await DownloadAsync(new List<ModuleStatus> { item.Status }, item.Status.Local == null ? "Install" : "Update");
+        }
+
+        /// <summary>A click anywhere on a card, other than on its buttons, ticks or unticks it.</summary>
+        private void OnCardClicked(object sender, MouseButtonEventArgs e)
+        {
+            var item = ItemOf(sender);
+            if (e.Handled || item == null || !item.CanSelect || !IsIdle) return;
+            item.IsSelected = !item.IsSelected;
+        }
+
+        private void OnPickChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(ModuleItem.IsSelected) || !(sender is ModuleItem item)) return;
+
+            var entry = item.Status.Entry;
+            if (!item.IsSelected)
+            {
+                _picks.Remove(entry.Id);
+                RaiseCommands();
+                return;
+            }
+
+            _picks.Add(entry.Id);
+
+            // Variants share one file (patch-S standard and standalone), so only one of them can be ticked.
+            var sibling = _items.FirstOrDefault(i => i != item && i.IsSelected
+                                                     && string.Equals(i.Status.Entry.FileName, entry.FileName, StringComparison.OrdinalIgnoreCase));
+            if (sibling != null)
+            {
+                sibling.IsSelected = false;
+                Say(entry.Display + " and " + sibling.Title + " share one file",
+                    "Only one of them fits in " + entry.FileName + ", so I unticked " + sibling.Title + ".", MascotMood.Idle);
+            }
+            RaiseCommands();
+        }
+
+        private void OnClearPicks(object sender, RoutedEventArgs e)
+        {
+            foreach (var item in _items.Where(i => i.IsSelected)) item.IsSelected = false;
         }
 
         private async void OnRemoveModule(object sender, RoutedEventArgs e)

@@ -63,6 +63,8 @@ share the `reforged-updater.json` settings file and see the same games.
 1. Install patches in either of the following ways:
 
    - To install one patch, click **Install** on its card.
+   - To install several patches, select the checkbox on each card, and then
+     click **Install N selected** at the top of the window.
    - To install every patch, click **Install all patches** at the top of the
      window.
 

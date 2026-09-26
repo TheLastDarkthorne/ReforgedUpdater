@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -20,7 +21,7 @@ namespace ReforgedUpdater.Gui
     }
 
     /// <summary>One module card.</summary>
-    public sealed class ModuleItem
+    public sealed class ModuleItem : INotifyPropertyChanged
     {
         internal ModuleStatus Status { get; }
         private readonly string _accent;
@@ -121,6 +122,25 @@ namespace ReforgedUpdater.Gui
         }
 
         public bool HasAction => ActionText != null;
+
+        /// <summary>Cards that would download something can be ticked and installed together.</summary>
+        public bool CanSelect => Status.State == ModuleState.NotInstalled || Status.NeedsDownload;
+
+        private bool _isSelected;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected == value || (value && !CanSelect)) return;
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public string SelectName => "Select " + Entry.Display;
         public string ActionName => ActionText + " " + Entry.Display;
         public string RemoveName => "Remove " + Entry.Display;
         public bool IsCurrent => Status.State == ModuleState.UpToDate;

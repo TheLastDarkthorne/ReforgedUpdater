@@ -26,6 +26,9 @@ language: "Bal'a dash, malanore!" means "Greetings, traveler!"
 The pink button in the top-right corner does the most useful thing for the
 current game:
 
+- **Install N selected**, **Update N selected**, or **Get N selected**:
+  downloads the patches that you selected on their cards. For more
+  information, see [Install several patches at once](#install-several-patches-at-once).
 - **Update 1 patch** or **Update N patches**: downloads every installed patch
   that changed.
 - **Install all patches**: appears on a game that has no patches yet, and
@@ -56,6 +59,34 @@ its state, and the button in the bottom-right corner fixes it:
 
 To see a patch's full description, its file name, and its ID for the command
 line, hold the pointer over its card.
+
+## Install several patches at once
+
+Cards that have something to download, such as **Not installed** or **Update
+ready**, have a round checkbox in the bottom-left corner. To download several
+patches in one go, do the following:
+
+1. Select the checkbox on each patch that you want, or click anywhere on the
+   card outside its buttons. A selected card has a pink outline.
+1. At the top of the window, click **Install N selected**. If your selection
+   mixes new patches and updates, the button says **Get N selected**.
+1. In the dialog, check the total download size, and then click the action
+   again to start.
+
+The updater downloads the patches one after another, in the order that the site
+lists them. This is the same queue that `ReforgedUpdater install A C G` uses on
+the command line.
+
+Keep the following in mind:
+
+- Some patches, such as Patch-S, have several variants that share one file.
+  You can select only one variant of a patch. Selecting another variant clears
+  the first one.
+- Your selection stays after **Check again**. A patch that no longer needs
+  downloading is cleared from the selection.
+- If one patch in the selection can't be reached on the server, the dialog
+  says so and the updater downloads the others.
+- To clear the selection, click **Clear** next to the main button.
 
 Before any download starts, a dialog shows the total size and the destination
 folder. Click the action again, for example **Install**, to start, or click
