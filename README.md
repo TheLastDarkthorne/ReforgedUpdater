@@ -1,4 +1,4 @@
-# Project Reforged Updater
+# Project Reforged Updater!
 
 Project Reforged Updater keeps the [Project Reforged](https://projectreforged.github.io/)
 HD patches for World of Warcraft up to date. It supports Wrath of the Lich King
@@ -6,9 +6,9 @@ HD patches for World of Warcraft up to date. It supports Wrath of the Lich King
 reads the public downloads page, compares it with the patch files in your
 game's `Data` folder, and downloads only what changed.
 
-The updater comes as two programs that share one engine and one settings file:
+The updater comes in two flavors that share one engine and one settings file:
 
-- `ReforgedUpdaterGui.exe`: a window with Belora, a small elf who shows how
+- `ReforgedUpdaterGui.exe`: a cute window with Belora, your small elf girl who shows how
   things stand.
 - `ReforgedUpdater.exe`: a command line for scripts, scheduled tasks, and game
   launchers.
@@ -54,6 +54,13 @@ step-by-step instructions, see [Get started](docs/get-started.md).
 | [How the updater works](docs/how-it-works.md) | Learn how updates are detected, how downloads resume, and which files the updater writes. |
 | [Troubleshooting](docs/troubleshooting.md) | Fix common problems, such as locked files or a missing game folder. |
 | [Development](docs/development.md) | Change the code, the theme, or Belora. |
+
+## Something you need to know!
+This is a personal project I made for myself and as a proof of concept. It is for 
+educational purposes only! Project Reforged has their own updater and I recommend 
+everyone to support their project instead to get access to their updater. 
+With it you also get access to perks like optimal DXVK, game and mods configurations, 
+early releases, priority support and more. 
 
 ## License
 
