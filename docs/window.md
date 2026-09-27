@@ -97,11 +97,17 @@ folder. Click the action again, for example **Install**, to start, or click
 The game picker in the strip under the bubble lists the following:
 
 - Every game that you added, in the window or on the command line.
-- The game that the updater found on its own, if you didn't add it. Its entry
-  says **found automatically**.
+- The game that the window is in, if you copied it next to `Wow.exe` and didn't
+  add that game. Its entry says **this app's folder**.
+
+The updater doesn't search your computer for games.
 
 When you pick a game, the window checks it and shows its patches. The window
 opens the game that you used last, on the command line or in the window.
+
+If you used a game on the command line with `--wow` but never added it, the
+window doesn't list it. When you click **Add a game**, the window fills in that
+game's folder for you.
 
 ## Add a game
 

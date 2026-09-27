@@ -6,14 +6,18 @@ to look after several games with one copy of the updater.
 
 ## How the updater finds your game
 
-When you don't name a game, the updater uses the first of the following that
-contains `Wow.exe` or a `Data` folder:
+The updater doesn't search your computer for games. Searching would only find
+Blizzard's official game, and Project Reforged is for private servers only. The
+updater only looks after game folders that you give it, in these ways:
 
-1. The game that you used last.
-1. The folder that the updater is in, and each folder that contains it.
-1. The install folder in the Windows registry.
-1. `World of Warcraft`, `Games\World of Warcraft`, and
-   `Program Files (x86)\World of Warcraft` on each fixed drive.
+- You add the game, in the window or with `games add`.
+- You name its folder with `--wow` on the command line.
+- You copy the updater into the game folder, next to `Wow.exe`. The updater
+  checks only its own folder, not the folders that contain it.
+
+When you don't name a game, the updater uses the game that you used last, or
+else the game that it's in. To add a game, see
+[Look after several games](#look-after-several-games).
 
 If you point the updater at a `Data` folder by mistake, it uses the folder that
 contains `Data` as the game folder.

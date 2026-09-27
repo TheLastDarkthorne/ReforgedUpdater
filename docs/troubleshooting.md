@@ -6,10 +6,12 @@ text of every message is in the activity log. To open the log, click
 
 ## The updater can't find your game
 
-**Message:** `Could not find your WoW folder.`
+**Message:** `No game chosen yet.` or
+`The game used last is no longer a game folder.`
 
-The updater looks in a few usual places, and your game is somewhere else. Add
-the game yourself in either of the following ways:
+The updater doesn't search your computer for games. You haven't added one yet,
+the updater isn't in a game folder next to `Wow.exe`, or the folder of the game
+that you used last has moved. Add the game in either of the following ways:
 
 - In the window, click **Choose game folder**, or click **Add a game** (**+**).
 - On the command line, run the following command:

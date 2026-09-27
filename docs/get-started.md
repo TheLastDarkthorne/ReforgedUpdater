@@ -42,14 +42,13 @@ share the `reforged-updater.json` settings file and see the same games.
 
 1. Run `ReforgedUpdaterGui.exe`.
 
-   Belora, the elf in the top-left corner, greets you and looks for your game.
-   The updater checks the folder that the program is in, the folders that
-   contain it, the Windows registry, and common install folders such as
-   `C:\World of Warcraft`.
+   Belora, the elf in the top-left corner, greets you. The updater doesn't
+   search your computer for games. If you copied it into your game folder, next
+   to `Wow.exe`, it opens that game. Otherwise, you show it where your game is.
 
-1. If the updater doesn't find your game, click **Choose game folder**. To add
-   a game other than the one it found, click **Add a game** (**+**) next to the
-   game picker. Then do the following:
+1. If the window doesn't show your game, click **Choose game folder**. To add
+   another game later, click **Add a game** (**+**) next to the game picker.
+   Then do the following:
 
    1. In **Game folder**, enter or browse to the folder that contains `Wow.exe`.
    1. In **Nickname**, keep the suggested name or type a short one, such as
@@ -77,23 +76,29 @@ left. When the download finishes, each installed patch card shows
 
 ## Install patches from the command line
 
-1. Copy `ReforgedUpdater.exe` into your game folder, next to `Wow.exe`.
-1. Open a terminal in that folder.
+1. Open a terminal in the folder that contains `ReforgedUpdater.exe`.
+1. Add your game once, with a short name, its folder, and the patch set that
+   it uses:
+
+   ```bash
+   ReforgedUpdater games add turtle "D:\Games\TurtleWoW" --edition turtle
+   ```
+
+   Use `wotlk` for WotLK 3.3.5a servers, `kronos` for Kronos and other standard
+   vanilla servers, and `turtle` for Turtle WoW and servers based on it. The
+   updater doesn't search your computer for games. If you copied
+   `ReforgedUpdater.exe` into your game folder, next to `Wow.exe`, you can skip
+   this step. The updater then uses that game, and asks for its patch set if it
+   can't tell.
+
 1. Check what the site offers and what you have installed:
 
    ```bash
    ReforgedUpdater
    ```
 
-1. If the updater reports a vanilla 1.12 client, tell it which server you play
-   on:
-
-   ```bash
-   ReforgedUpdater edition turtle
-   ```
-
-   Use `kronos` for Kronos and other standard vanilla servers, and `turtle` for
-   Turtle WoW and servers based on it.
+   Commands use the game that you used last. To pick another game, add
+   `--game NAME`.
 
 1. Install the patches that you want, identified by their letters on the
    downloads page:

@@ -370,7 +370,7 @@ namespace ReforgedUpdater
         {
             if (cli.Values.Count == 0)
             {
-                Ui.Info("Configured client folder: " + (settings.WowPath ?? "<not set - autodetected each run>"));
+                Ui.Info("Configured client folder: " + (settings.WowPath ?? "<not set - add a game, or put this exe next to Wow.exe>"));
                 Ui.Info("Settings file:            " + settingsPath);
                 return ExitOk;
             }
@@ -585,8 +585,9 @@ namespace ReforgedUpdater
         // ---------------------------------------------------------------- helpers
 
         /// <summary>
-        /// Picks the game for this run: --game, then --wow, then the last one used, then
-        /// autodetection. The game's own saved Data folder is applied on top; the "data" command
+        /// Picks the game for this run: --game, then --wow, then the last one used, then the
+        /// game this exe sits in. Nothing is searched for. The game's own saved Data folder is
+        /// applied on top; the "data" command
         /// still runs when that folder is gone, since it is how the setting gets fixed.
         /// </summary>
         private static WowInstall ResolveInstall(CommandLine cli, Settings settings, out string gameName)
@@ -614,16 +615,18 @@ namespace ReforgedUpdater
             }
             else
             {
-                wow = WowInstall.Detect(settings.WowPath, explicitData);
+                wow = WowInstall.LastUsed(settings.WowPath, explicitData) ?? WowInstall.BesideExe(explicitData);
                 if (wow == null)
                 {
                     // Data was given but the client folder is still unknown: that is enough to
                     // work with, since the .mpq files are all we touch.
                     if (!string.IsNullOrWhiteSpace(explicitData)) return Finish(WowInstall.ForData(explicitData), out gameName);
 
-                    throw new UpdaterException(
-                        "Could not find your WoW folder. Put this exe in the folder that contains Wow.exe, "
-                        + "or run:  ReforgedUpdater games add <name> \"D:\\Games\\World of Warcraft\" --edition <edition>");
+                    string why = string.IsNullOrWhiteSpace(settings.WowPath)
+                        ? "No game chosen yet."
+                        : "The game used last is no longer a game folder: " + settings.WowPath + ".";
+                    throw new UpdaterException(why + " Add your game once with:  ReforgedUpdater games add <name> "
+                                               + "\"D:\\Games\\MyServer\" --edition <edition>   (or put this exe next to Wow.exe)");
                 }
 
                 if (settings.Games.Count > 1)

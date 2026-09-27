@@ -66,9 +66,9 @@ the total size, and asks you to confirm. To skip the question, add `--yes`.
 | `--no-color` | Prints plain text without colors. |
 | `--quiet`, `-q` | Prints only errors and warnings. |
 
-Without `--game` or `--wow`, commands use the game that you used last. If you
-haven't used one yet, the updater looks for a game on its own. For more
-information, see [How the updater finds your game](games-and-editions.md#how-the-updater-finds-your-game).
+Without `--game` or `--wow`, commands use the game that you used last, or else
+the game that the updater is in, next to `Wow.exe`. The updater doesn't search
+for games. For more information, see [How the updater finds your game](games-and-editions.md#how-the-updater-finds-your-game).
 
 `--all-games` can't be combined with `--game`, `--wow`, `--data`, `--edition`,
 or `--json`, because those options describe a single game.

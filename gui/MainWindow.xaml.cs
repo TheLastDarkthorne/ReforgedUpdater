@@ -198,30 +198,30 @@ namespace ReforgedUpdater.Gui
             await ReloadGamesAsync(null);
         }
 
-        /// <summary>Registered games, plus the one next to the exe or in a usual place if it is not registered.</summary>
+        /// <summary>
+        /// The games the user added, plus the one this app was copied into, opening the one
+        /// used last. Nothing is searched for: the window only looks after folders the user chose.
+        /// </summary>
         private async Task ReloadGamesAsync(string selectPath)
         {
-            if (!_greeting) Mood = MascotMood.Busy;
-            WowInstall detected = null;
-            try { detected = await Task.Run(() => WowInstall.Detect(_settings.WowPath)); }
-            catch (UpdaterException) { /* nothing found is fine */ }
+            var beside = WowInstall.BesideExe();
 
             _syncing = true;
             Games.Clear();
             foreach (var game in _settings.Games) Games.Add(new GameChoice(game.Name, game.Path, registered: true));
-            if (detected != null && _settings.FindGameByPath(detected.Root) == null)
-                Games.Insert(0, new GameChoice(Path.GetFileName(detected.Root.TrimEnd('\\')), detected.Root, registered: false));
+            if (beside != null && _settings.FindGameByPath(beside.Root) == null)
+                Games.Insert(0, new GameChoice(Path.GetFileName(beside.Root.TrimEnd('\\')), beside.Root, registered: false));
             _syncing = false;
 
             if (Games.Count == 0)
             {
                 CloseGame();
                 ShowEmpty = true;
-                if (_greeting)
-                    Say("Bal'a dash, malanore!", "Greetings, traveler! I couldn't find your World of Warcraft on my own. Show me where it is?",
-                        MascotMood.Happy);
-                else
-                    Say("Where's your World of Warcraft?", "I couldn't spot a game folder on my own. Show me where it is!", MascotMood.Idle);
+                string hint = UnaddedLastGame() != null
+                    ? "Last time you used " + UnaddedLastGame() + ". Press Choose game folder and I'll fill it in."
+                    : "Show me the folder your World of Warcraft is in, or copy me next to Wow.exe, and I'll look after its patches.";
+                if (_greeting) Say("Bal'a dash, malanore!", "Greetings, traveler! " + hint, MascotMood.Happy);
+                else Say("Which game should I look after?", hint, MascotMood.Idle);
                 _greeting = false;
                 return;
             }
@@ -642,7 +642,7 @@ namespace ReforgedUpdater.Gui
 
         private async void OnAddGame(object sender, RoutedEventArgs e)
         {
-            string suggestion = _currentGame != null && !_currentGame.Registered ? _currentGame.Path : null;
+            string suggestion = _currentGame != null && !_currentGame.Registered ? _currentGame.Path : UnaddedLastGame();
             var dialog = new AddGameWindow(_settings, _settingsPath, suggestion) { Owner = this };
             if (dialog.ShowDialog() != true) return;
 
@@ -931,6 +931,16 @@ namespace ReforgedUpdater.Gui
         }
 
         // ================================================================ helpers
+
+        /// <summary>
+        /// A game folder the command line used last (with --wow or path) that was never added,
+        /// so the Add dialog can offer it instead of the user browsing for it again.
+        /// </summary>
+        private string UnaddedLastGame()
+        {
+            string last = _settings.WowPath;
+            return WowInstall.LooksLikeWowFolder(last) && _settings.FindGameByPath(last) == null ? last : null;
+        }
 
         private static bool SamePath(string a, string b)
         {

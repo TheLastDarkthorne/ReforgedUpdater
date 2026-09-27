@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.Win32;
 
 namespace ReforgedUpdater
 {
@@ -157,64 +156,35 @@ namespace ReforgedUpdater
         }
 
         /// <summary>
-        /// Tries, in order: the saved setting, the folder the exe sits in (and its parents),
-        /// the registry, then a handful of common install paths.
+        /// The game used last, while its folder is still a game folder; otherwise null.
+        /// Nothing is ever searched for: Project Reforged is for private servers, and a search
+        /// would only turn up Blizzard's own installs. Every game comes from the user, either
+        /// named outright or by copying the exe into it (<see cref="BesideExe"/>).
         /// </summary>
-        public static WowInstall Detect(string configured, string dataOverride = null)
+        public static WowInstall LastUsed(string configured, string dataOverride = null)
         {
             string data = NormalizeData(dataOverride);
+            if (!LooksLikeWowFolder(configured)) return null;
 
-            foreach (string candidate in Candidates(configured))
-            {
-                if (LooksLikeWowFolder(candidate))
-                {
-                    try { return new WowInstall(Path.GetFullPath(candidate), data); }
-                    catch { /* keep looking */ }
-                }
-            }
-            return null;
+            try { return new WowInstall(Path.GetFullPath(configured), data); }
+            catch { return null; }
         }
 
-        private static IEnumerable<string> Candidates(string configured)
+        /// <summary>
+        /// The game the user copied this exe into: Wow.exe in the exe's own folder, otherwise
+        /// null. Only that one folder is checked - not its parents, and a Data folder alone does
+        /// not count - so the exe never picks up a game the user did not put it in.
+        /// </summary>
+        public static WowInstall BesideExe(string dataOverride = null)
         {
-            if (!string.IsNullOrWhiteSpace(configured)) yield return configured;
-
-            string exeDir = AppDomain.CurrentDomain.BaseDirectory;
-            for (var dir = new DirectoryInfo(exeDir); dir != null; dir = dir.Parent)
-                yield return dir.FullName;
-
-            foreach (string fromRegistry in RegistryPaths()) yield return fromRegistry;
-
-            foreach (string drive in DriveInfo.GetDrives()
-                         .Where(d => d.DriveType == DriveType.Fixed && d.IsReady)
-                         .Select(d => d.Name))
+            string folder = AppDomain.CurrentDomain.BaseDirectory;
+            try
             {
-                yield return Path.Combine(drive, "World of Warcraft");
-                yield return Path.Combine(drive, "Games", "World of Warcraft");
-                yield return Path.Combine(drive, "Program Files (x86)", "World of Warcraft");
+                if (!File.Exists(Path.Combine(folder, "Wow.exe"))) return null;
+                return new WowInstall(Path.GetFullPath(folder), NormalizeData(dataOverride));
             }
-        }
-
-        private static IEnumerable<string> RegistryPaths()
-        {
-            string[] keys =
-            {
-                @"SOFTWARE\WOW6432Node\Blizzard Entertainment\World of Warcraft",
-                @"SOFTWARE\Blizzard Entertainment\World of Warcraft"
-            };
-
-            foreach (string key in keys)
-            {
-                string value = null;
-                try
-                {
-                    using (var handle = Registry.LocalMachine.OpenSubKey(key))
-                        value = handle?.GetValue("InstallPath") as string;
-                }
-                catch { /* registry access is best effort */ }
-
-                if (!string.IsNullOrWhiteSpace(value)) yield return value;
-            }
+            catch (IOException) { return null; }
+            catch (UnauthorizedAccessException) { return null; }
         }
 
         /// <summary>

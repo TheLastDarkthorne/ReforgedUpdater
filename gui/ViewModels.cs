@@ -164,7 +164,7 @@ namespace ReforgedUpdater.Gui
         }
     }
 
-    /// <summary>An entry in the game picker: a registered game, or the one found on its own.</summary>
+    /// <summary>An entry in the game picker: a game the user added, or the one this app sits in.</summary>
     public sealed class GameChoice
     {
         public string Name { get; }
@@ -178,7 +178,7 @@ namespace ReforgedUpdater.Gui
             Registered = registered;
         }
 
-        public string Hint => Registered ? Path : "found automatically · " + Path;
+        public string Hint => Registered ? Path : "this app's folder · " + Path;
     }
 
     /// <summary>
