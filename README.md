@@ -16,6 +16,11 @@ The updater comes in two flavors that share one engine and one settings file:
 Each program is a single file with no installer. Both run on Windows 10 and
 Windows 11 without any extra runtime.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/window-dark.png">
+  <img src="docs/images/window-light.png" alt="The Reforged Updater window. Belora greets you with Bal'a dash, malanore!, and the patch cards for a demo WotLK game each offer an Install button." width="820">
+</picture>
+
 ## Features
 
 - Installs, updates, and removes patches with one click or one command.
