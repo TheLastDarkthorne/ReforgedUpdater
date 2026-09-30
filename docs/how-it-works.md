@@ -4,12 +4,6 @@ This page explains how the updater decides that a patch needs downloading, how
 it checks file contents without downloading them, how downloads resume, and
 which files it writes.
 
-## Why the updater is a separate program
-
-The World of Warcraft addon API has no way to make web requests, and addons
-can't write files outside `SavedVariables`. An addon written in Lua therefore
-can't download or replace a patch archive, so the updater runs outside the game.
-
 ## Update detection
 
 For each patch that it installs, the updater records the following:
