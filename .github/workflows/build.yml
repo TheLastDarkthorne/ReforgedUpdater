@@ -1,0 +1,103 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Both programs target .NET Framework 4.8 and the window is WPF, so this needs Windows.
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # A v1.2.3 tag sets the version of both programs. Anything else builds as 0.0.0-ci,
+      # so a test build is never mistaken for a release.
+      - name: Work out the version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::Tag $GITHUB_REF_NAME is not a version like v1.2.3 or v1.2.3-beta.1"
+              exit 1
+            fi
+          else
+            version="0.0.0-ci"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "numeric=${version%%-*}.0" >> "$GITHUB_OUTPUT"
+
+      - name: Build the command line
+        run: >
+          dotnet build ReforgedUpdater.csproj -c Release
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:FileVersion=${{ steps.version.outputs.numeric }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric }}
+
+      - name: Build the window
+        run: >
+          dotnet build gui/ReforgedUpdater.Gui.csproj -c Release
+          -p:Version=${{ steps.version.outputs.version }}
+          -p:FileVersion=${{ steps.version.outputs.numeric }}
+          -p:AssemblyVersion=${{ steps.version.outputs.numeric }}
+
+      - name: Check both programs were built
+        shell: bash
+        run: |
+          for exe in ReforgedUpdater.exe ReforgedUpdaterGui.exe; do
+            test -s "bin/Release/net48/$exe" || { echo "::error::$exe was not built"; exit 1; }
+          done
+          ./bin/Release/net48/ReforgedUpdater.exe help > /dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReforgedUpdater-${{ steps.version.outputs.version }}
+          path: |
+            bin/Release/net48/ReforgedUpdater.exe
+            bin/Release/net48/ReforgedUpdaterGui.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReforgedUpdater-${{ needs.build.outputs.version }}
+          path: release
+
+      - name: Package and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          cd release
+          zip "ReforgedUpdater-$VERSION.zip" ReforgedUpdater.exe ReforgedUpdaterGui.exe
+          sha256sum ReforgedUpdater.exe ReforgedUpdaterGui.exe "ReforgedUpdater-$VERSION.zip" > SHA256SUMS.txt
+
+          # A version with a suffix, such as v1.2.0-beta.1, is a pre-release.
+          flags=""
+          if [[ "$VERSION" == *-* ]]; then flags="--prerelease"; fi
+
+          gh release create "$GITHUB_REF_NAME" $flags \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Project Reforged Updater $VERSION" \
+            --generate-notes \
+            ReforgedUpdater.exe ReforgedUpdaterGui.exe "ReforgedUpdater-$VERSION.zip" SHA256SUMS.txt

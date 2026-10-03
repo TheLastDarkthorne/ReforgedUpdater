@@ -22,6 +22,37 @@ it, so each program stays a single file. The
 `Microsoft.NETFramework.ReferenceAssemblies` package lets any .NET SDK from
 version 5.0 build them without the .NET Framework developer pack.
 
+## Builds and releases
+
+The `Build and release` workflow in `.github/workflows/build.yml` runs on
+GitHub. It builds both programs on a Windows runner for every push to `main`
+and every pull request, and keeps the two `.exe` files as a workflow artifact
+for a short time. These builds are versioned `0.0.0-ci`.
+
+To publish a release, push a tag that starts with `v`:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The workflow builds both programs with that version, and then creates a GitHub
+release named after the tag. The release has the two `.exe` files, a `.zip` of
+both, and a `SHA256SUMS.txt` file, with notes written from the commits since
+the last release.
+
+Keep the following in mind:
+
+- The tag must look like `v1.2.3`. A tag with a suffix, such as
+  `v1.2.0-beta.1`, is published as a pre-release. Any other tag stops the
+  workflow before it builds.
+- The tag sets the version of both programs, so you don't edit the `Version`
+  lines in the `.csproj` files for a release. Those lines only apply to builds
+  on your own computer.
+- To rerun a build without pushing, open **Actions** on GitHub, select
+  **Build and release**, and click **Run workflow**. This never publishes a
+  release.
+
 ## Project layout
 
 The window compiles every file in `src/` except `Program.cs`, so both programs
