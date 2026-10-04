@@ -26,6 +26,8 @@ Windows 11 without any extra runtime.
 - Installs, updates, and removes patches with one click or one command.
 - Queues several patches in one download, from the command line or by selecting
   cards in the window.
+- Copies patches between games that use the same patch set, instead of
+  downloading them again.
 - Detects silent re-uploads on the server, not only new version numbers.
 - Adopts patches that you downloaded by hand, and checks their content against
   the published build without downloading them again.

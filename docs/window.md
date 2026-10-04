@@ -146,6 +146,35 @@ game, the window asks **Which vanilla server is this for?** Click **Kronos** or
 
 For more information, see [Editions](games-and-editions.md#editions).
 
+## Copy patches from another game
+
+If you have another game that uses the same patch set, you can copy its patches
+instead of downloading them again. For example, copy the patches from one WotLK
+game to another WotLK game.
+
+1. Click **More** (**⋯**), and then click **Copy patches from another game…**.
+1. In **Copy from**, select the game to copy from. The list has only your other
+   games that use the same patch set as this one.
+
+   The window lists the patches that it would copy and their total size.
+   Under **Left out**, it explains why it skips the others, for example because
+   this game already has the patch.
+
+1. Optional: select **Double-check each copy**. The window then reads every
+   copied file back to make sure it was written correctly. This is slower, so
+   it's off each time that you open the dialog.
+1. Click **Copy N patches**.
+
+A progress card shows the copy, and you can click **Stop**. Patches that are
+already copied stay, and the patch in progress is dropped. When the copy ends,
+the cards show the patches as installed. The updater copies only patches that
+this game doesn't have, and never overwrites a file. For more information, see
+[Copy patches from another game](games-and-editions.md#copy-patches-from-another-game).
+
+If **Copy patches from another game…** is unavailable, you have only one game.
+If the window says that there's no other game to copy from, none of your other
+games use this game's patch set.
+
 ## Adopt patches that you already have
 
 If you downloaded patches by hand before you used the updater, their cards show
@@ -194,6 +223,7 @@ menu:
 
 | Menu item | What it does |
 | --- | --- |
+| **Copy patches from another game…** | Copies patches that another game of yours already has, without downloading them. For more information, see [Copy patches from another game](#copy-patches-from-another-game). |
 | **Install every patch** | Installs every patch that isn't installed. For a patch with several variants, such as Patch-S, the updater installs the first variant. |
 | **Check file contents (slow)** | Reads every installed patch file and compares it with the published build. Files that differ are marked **Update ready**. |
 | **Open the game folder** | Opens the game folder in File Explorer. |

@@ -31,6 +31,7 @@ either `--game warmane` or `--game=warmane`.
 | `install --all` | Installs every patch that isn't installed. For a patch with several variants, installs the first variant. |
 | `update [MODULE_ID ...]` | Downloads every installed patch that changed. With IDs, updates only those patches. |
 | `adopt [MODULE_ID ...]` | Starts tracking patch files that you downloaded by hand, without downloading them again. Without IDs, adopts every untracked file. |
+| `copy --from NAME [MODULE_ID ...]` | Copies the patches that another game of yours has, instead of downloading them again. Both games must use the same patch set. Copies only the patches that this game doesn't have. With IDs, copies only those patches. For more information, see [Copy patches from another game](games-and-editions.md#copy-patches-from-another-game). |
 | `remove MODULE_ID ...` | Deletes the patch files and stops tracking them. With `--keep-file`, only stops tracking them. |
 | `verify` | Asks the server about every installed file and prints the status table. With `--deep`, also reads each file and compares its content with the published build. |
 | `games` | Lists the games that you added. |
@@ -41,21 +42,24 @@ either `--game warmane` or `--game=warmane`.
 | `edition [EDITION]` | Shows or sets the current game's patch set: `wotlk`, `kronos`, or `turtle`. |
 | `help` | Prints the built-in help. `--help`, `-h`, and `-?` do the same. |
 
-Before `install` and `update` download anything, the updater lists the files and
-the total size, and asks you to confirm. To skip the question, add `--yes`.
+Before `install`, `update`, and `copy` change anything, the updater lists the
+files and the total size, and asks you to confirm. To skip the question, add
+`--yes`.
 
 ## Options
 
 | Option | What it does |
 | --- | --- |
 | `--game NAME` | Uses the game that you added under `NAME`. |
+| `--from NAME` | With `copy`, the game to copy patches from. |
+| `--verify-copy` | With `copy`, reads each copied file back from your drive and checks it. This catches a bad write, but makes the copy slower. |
 | `--all-games` | Runs `status`, `update`, `adopt`, `verify`, or `list` for every game that you added. For more information, see [Run a command for every game](games-and-editions.md#run-a-command-for-every-game). |
 | `--wow FOLDER` | Uses this game folder for one run. `--path FOLDER` does the same. |
 | `--data FOLDER` | Uses this `Data` folder for one run, without saving it. |
 | `--edition EDITION` | Uses this patch set, and remembers it for the game. |
 | `--all` | With `install`, installs every patch that isn't installed. |
 | `--yes`, `-y` | Doesn't ask for confirmation. |
-| `--dry-run` | Shows what would be downloaded, and changes nothing. |
+| `--dry-run` | Shows what would be downloaded or copied, and changes nothing. |
 | `--fast` | Skips the server checks and compares version labels only. |
 | `--no-hash` | Skips the SHA-256 calculation after each download. |
 | `--keep-file` | With `remove`, leaves the patch file in `Data`. |
@@ -193,6 +197,12 @@ Update every game that you added, without questions:
 
 ```bash
 ReforgedUpdater update --all-games --yes
+```
+
+Copy the patches from one game to another, without downloading them again:
+
+```bash
+ReforgedUpdater copy --from warmane --game octowow
 ```
 
 Find files that are damaged or not the published build:

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,6 +37,25 @@ namespace ReforgedUpdater
 
         public string LocalVersion => Local?.Version ?? (Local != null ? "installed" : "-");
         public string RemoteVersion => Entry.Version == null ? "-" : "v" + Entry.Version;
+    }
+
+    /// <summary>One patch that would be copied from another game.</summary>
+    internal sealed class CopyEntry
+    {
+        public CatalogEntry Entry;
+        public InstalledFile Source;
+        public string SourcePath;
+        public long Size;
+    }
+
+    /// <summary>What copying patches from another game would do: the patches, and why others are left out.</summary>
+    internal sealed class CopyPlan
+    {
+        public string SourceName;
+        public List<CopyEntry> Items = new List<CopyEntry>();
+        public List<string> Skipped = new List<string>();
+
+        public long Bytes => Items.Sum(i => i.Size);
     }
 
     /// <summary>The update engine: compares the site against the client folder and applies changes.</summary>
@@ -332,11 +352,32 @@ namespace ReforgedUpdater
         /// <summary>Swaps the finished .part into Data, keeping the old file until the move succeeds.</summary>
         private void Install(ModuleStatus row, string partPath, string digest)
         {
-            string target = _wow.TargetPath(row.Entry);
+            Swap(row.Entry.FileName, partPath);
+            ForgetSiblings(row.Entry.Id, row.Entry.FileName);
+
+            _state.Record(new InstalledFile
+            {
+                Id = row.Entry.Id,
+                FileName = row.Entry.FileName,
+                Url = row.Entry.Url,
+                Version = row.Entry.Version,
+                ETag = row.Remote.ETag,
+                LastModified = row.Remote.LastModified,
+                Size = new FileInfo(_wow.TargetPath(row.Entry)).Length,
+                Sha256 = digest,
+                InstalledAt = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)
+            });
+            Save();
+        }
+
+        /// <summary>Moves a finished file into Data, putting the previous file back if the move fails.</summary>
+        private void Swap(string fileName, string partPath)
+        {
+            string target = Path.Combine(_wow.DataDir, fileName);
             string backup = target + ".old";
 
             if (WowInstall.IsLocked(target))
-                throw new UpdaterException("Cannot replace " + row.Entry.FileName
+                throw new UpdaterException("Cannot replace " + fileName
                                            + " because it is in use. Close World of Warcraft and run the update again.");
 
             try
@@ -353,32 +394,255 @@ namespace ReforgedUpdater
             {
                 // Put the previous file back so the client is never left without one.
                 if (!File.Exists(target) && File.Exists(backup)) File.Move(backup, target);
-                throw new UpdaterException("Could not install " + row.Entry.FileName + ": " + ex.Message);
+                throw new UpdaterException("Could not install " + fileName + ": " + ex.Message);
             }
+        }
 
-            // Installing one variant of a slot replaces any other variant of the same slot.
+        /// <summary>Installing one variant of a slot replaces any other variant of the same slot.</summary>
+        private void ForgetSiblings(string id, string fileName)
+        {
             foreach (var sibling in _state.Files
-                         .Where(f => !string.Equals(f.Id, row.Entry.Id, StringComparison.OrdinalIgnoreCase)
-                                  && string.Equals(f.FileName, row.Entry.FileName, StringComparison.OrdinalIgnoreCase))
+                         .Where(f => !string.Equals(f.Id, id, StringComparison.OrdinalIgnoreCase)
+                                  && string.Equals(f.FileName, fileName, StringComparison.OrdinalIgnoreCase))
                          .ToList())
             {
                 _state.Forget(sibling.Id);
-                Ui.Info("  (replaced " + sibling.Id + ", which used the same " + row.Entry.FileName + " slot)");
+                Ui.Info("  (replaced " + sibling.Id + ", which used the same " + fileName + " slot)");
+            }
+        }
+
+        // ------------------------------------------------------------ copying between games
+
+        /// <summary>
+        /// Works out which of another game's installed patches this game is missing. Patches
+        /// only copy between games that use the same patch set, because each set has its own
+        /// builds of a few modules; and only ones this game does not already have, so nothing
+        /// here is overwritten.
+        /// </summary>
+        /// <param name="only">Module ids to copy, or null for every patch the other game has.</param>
+        public CopyPlan PlanCopy(Updater source, string sourceName, List<CatalogEntry> catalog, List<string> only)
+        {
+            Edition mine = Edition.Find(_state.Edition);
+            Edition theirs = Edition.Find(source._state.Edition);
+
+            if (string.Equals(Path.GetFullPath(source._wow.DataDir).TrimEnd('\\', '/'),
+                              Path.GetFullPath(_wow.DataDir).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
+                throw new UpdaterException(sourceName + " uses the same Data folder as this game, so there is nothing to copy.");
+            if (mine == null)
+                throw new UpdaterException("This game has no patch set chosen yet, so I can't tell whether "
+                                           + sourceName + "'s patches fit it.");
+            if (theirs == null)
+                throw new UpdaterException(sourceName + " has no patch set chosen yet. Choose one for it first, "
+                                           + "for example:  ReforgedUpdater edition " + mine.Name + " --game " + sourceName);
+            if (mine != theirs)
+                throw new UpdaterException(sourceName + " uses " + theirs.Title + " and this game uses " + mine.Title
+                                           + ". Each patch set has its own builds, so patches only copy between games that use the same one.");
+
+            var wanted = only == null || only.Count == 0
+                ? null
+                : new HashSet<string>(only, StringComparer.OrdinalIgnoreCase);
+            var plan = new CopyPlan { SourceName = sourceName };
+
+            foreach (var record in source._state.Files)
+            {
+                if (wanted != null && !wanted.Contains(record.Id)) continue;
+
+                var entry = catalog.FirstOrDefault(e => string.Equals(e.Id, record.Id, StringComparison.OrdinalIgnoreCase));
+                if (entry == null) { plan.Skipped.Add(record.Id + ": no longer on the downloads page"); continue; }
+
+                string from = source._wow.TargetPath(entry);
+                if (!File.Exists(from)) { plan.Skipped.Add(entry.Display + ": the file is missing from " + sourceName); continue; }
+
+                long size = new FileInfo(from).Length;
+                if (record.Size > 0 && size != record.Size)
+                {
+                    plan.Skipped.Add(entry.Display + ": the file in " + sourceName + " has changed since it was installed");
+                    continue;
+                }
+
+                if (File.Exists(_wow.TargetPath(entry)))
+                {
+                    plan.Skipped.Add(entry.Display + ": this game already has " + entry.FileName);
+                    continue;
+                }
+
+                plan.Items.Add(new CopyEntry { Entry = entry, Source = record, SourcePath = from, Size = size });
             }
 
-            _state.Record(new InstalledFile
+            if (wanted != null)
+                foreach (string id in wanted.Where(id => source._state.Find(id) == null))
+                    plan.Skipped.Add(id + ": not installed in " + sourceName);
+
+            // Hand-downloaded files carry no record of which build they are, so they are not copied.
+            if (wanted == null)
             {
-                Id = row.Entry.Id,
-                FileName = row.Entry.FileName,
-                Url = row.Entry.Url,
-                Version = row.Entry.Version,
-                ETag = row.Remote.ETag,
-                LastModified = row.Remote.LastModified,
-                Size = new FileInfo(target).Length,
-                Sha256 = digest,
-                InstalledAt = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)
-            });
-            Save();
+                int untracked = catalog
+                    .Where(e => source._state.Find(e.Id) == null
+                             && !source._state.Files.Any(f => string.Equals(f.FileName, e.FileName, StringComparison.OrdinalIgnoreCase))
+                             && File.Exists(source._wow.TargetPath(e)))
+                    .Select(e => e.FileName).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+                if (untracked > 0)
+                    plan.Skipped.Add(untracked + " .mpq file(s) in " + sourceName + " are not tracked, so I can't tell which build they are. "
+                                     + "Adopt them there first to copy them");
+            }
+
+            return plan;
+        }
+
+        /// <summary>
+        /// Copies the planned patches into this game's Data folder. Each one goes to a temporary
+        /// file first and is hashed on the way; it only replaces anything once it is complete,
+        /// and is dropped if it does not match what the other game recorded when it installed it.
+        /// With <paramref name="verifyCopy"/> each finished copy is also read back from this game's
+        /// drive and checked, which catches a bad write at the cost of reading every file again.
+        /// Returns the number copied.
+        /// </summary>
+        public async Task<int> CopyFromAsync(CopyPlan plan, bool verifyCopy, CancellationToken ct)
+        {
+            if (plan.Items.Count == 0) return 0;
+
+            _wow.EnsureDirectories();
+
+            long needed = plan.Bytes + (256L * 1024 * 1024);
+            long free = _wow.FreeSpace();
+            if (free < needed)
+                throw new UpdaterException("Not enough free space: " + Ui.Bytes(needed) + " needed, "
+                                           + Ui.Bytes(free) + " available on this game's drive.");
+
+            if (WowInstall.GameIsRunning())
+                Ui.Warn("World of Warcraft looks like it is running. Close it before copying, or the swap will fail.");
+
+            int copied = 0;
+            for (int i = 0; i < plan.Items.Count; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var item = plan.Items[i];
+                string label = string.Format(CultureInfo.InvariantCulture, "[{0}/{1}] {2}",
+                    i + 1, plan.Items.Count, item.Entry.Display.PadRight(20));
+                string partPath = Path.Combine(_wow.CacheDir, item.Entry.FileName + ".copy");
+
+                string digest;
+                try
+                {
+                    digest = await Task.Run(() => CopyFile(item.SourcePath, partPath, item.Size, label, verifyCopy, ct), ct).ConfigureAwait(false);
+                }
+                catch (IOException ex)
+                {
+                    Ui.EndProgress();
+                    Ui.Warn(item.Entry.Display + ": could not be copied (" + ex.Message + ")");
+                    continue;
+                }
+                Ui.EndProgress();
+
+                if (!string.IsNullOrEmpty(item.Source.Sha256) && !digest.Equals(item.Source.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Delete(partPath); } catch { /* leftover only */ }
+                    Ui.Warn(item.Entry.Display + ": the file in " + plan.SourceName + " doesn't match what was recorded when it was installed, "
+                            + "so I didn't copy it. Check it there with \"verify --deep\".");
+                    continue;
+                }
+
+                if (verifyCopy)
+                {
+                    Ui.Info("  checking the copy of " + item.Entry.Display + " (" + Ui.Bytes(item.Size) + ")...");
+                    bool intact = await Task.Run(() => ReadBackMatches(partPath, digest), ct).ConfigureAwait(false);
+                    if (!intact)
+                    {
+                        try { File.Delete(partPath); } catch { /* leftover only */ }
+                        Ui.Warn(item.Entry.Display + ": the copy didn't read back the same as the original, so I didn't use it. "
+                                + "The drive may have a problem; try copying it again.");
+                        continue;
+                    }
+                }
+
+                try { Swap(item.Entry.FileName, partPath); }
+                catch (UpdaterException)
+                {
+                    try { File.Delete(partPath); } catch { /* leftover only */ }
+                    throw;
+                }
+                ForgetSiblings(item.Entry.Id, item.Entry.FileName);
+
+                // The record travels with the file, so a copy of an older build still shows as an update.
+                _state.Record(new InstalledFile
+                {
+                    Id = item.Source.Id,
+                    FileName = item.Source.FileName,
+                    Url = item.Source.Url,
+                    Version = item.Source.Version,
+                    ETag = item.Source.ETag,
+                    LastModified = item.Source.LastModified,
+                    Size = new FileInfo(_wow.TargetPath(item.Entry)).Length,
+                    Sha256 = digest,
+                    InstalledAt = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+                    ContentDiffers = item.Source.ContentDiffers
+                });
+                Save();
+                copied++;
+
+                Ui.Good("  copied " + item.Entry.Display
+                        + (item.Source.Version != null ? " v" + item.Source.Version : string.Empty)
+                        + "  (" + Ui.Bytes(item.Size) + ")");
+            }
+
+            return copied;
+        }
+
+        /// <summary>Reads a finished copy back from disk and checks it against the checksum of the original.</summary>
+        private static bool ReadBackMatches(string path, string expected)
+        {
+            try { return Downloader.Sha256(path).Equals(expected, StringComparison.OrdinalIgnoreCase); }
+            catch (IOException) { return false; }
+            catch (UnauthorizedAccessException) { return false; }
+        }
+
+        /// <summary>Copies one file, reporting progress, and returns its SHA-256. Leaves nothing behind on failure.</summary>
+        private static string CopyFile(string from, string to, long size, string label, bool flushToDisk, CancellationToken ct)
+        {
+            var buffer = new byte[1024 * 1024];
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            long done = 0, lastReport = 0;
+
+            try
+            {
+                // The other game may be open; read with the sharing the client itself allows.
+                using (var input = new FileStream(from, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                                                  buffer.Length, FileOptions.SequentialScan))
+                using (var output = new FileStream(to, FileMode.Create, FileAccess.Write, FileShare.None, buffer.Length))
+                using (var sha = SHA256.Create())
+                {
+                    int read;
+                    while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        output.Write(buffer, 0, read);
+                        sha.TransformBlock(buffer, 0, read, null, 0);
+                        done += read;
+
+                        if (clock.ElapsedMilliseconds - lastReport >= 250)
+                        {
+                            lastReport = clock.ElapsedMilliseconds;
+                            Ui.Progress(label, done, size, done / Math.Max(0.001, clock.Elapsed.TotalSeconds));
+                        }
+                    }
+                    sha.TransformFinalBlock(new byte[0], 0, 0);
+
+                    // When the copy is going to be read back, make sure the bytes have actually left the cache first.
+                    if (flushToDisk) output.Flush(true);
+
+                    if (done != size)
+                        throw new IOException("copied " + done + " of " + size + " bytes - the file changed while it was being copied");
+
+                    Ui.Progress(label, done, size, done / Math.Max(0.001, clock.Elapsed.TotalSeconds));
+                    return BitConverter.ToString(sha.Hash).Replace("-", string.Empty).ToLowerInvariant();
+                }
+            }
+            catch
+            {
+                try { File.Delete(to); } catch { /* leftover only */ }
+                throw;
+            }
         }
 
         /// <summary>

@@ -126,6 +126,44 @@ have updates, and which failed.
 `install` and `remove` work on one game at a time, because each game has its own
 set of patches.
 
+### Copy patches from another game
+
+If another game of yours already has the patches, copy them instead of
+downloading them again. This works between games that use the same patch set,
+for example two WotLK games. Each patch set has its own builds of some patches,
+so the updater doesn't copy between WotLK, Kronos, and Turtle WoW games.
+
+On the command line, name the game to copy from, and the game to copy into:
+
+```bash
+ReforgedUpdater copy --from warmane --game octowow
+```
+
+To copy only some patches, add their IDs, for example `copy A C --from warmane`.
+To see what would be copied first, add `--dry-run`. In the window, click
+**More** (**⋯**), and then click **Copy patches from another game…**. For
+more information, see [Copy patches from another game](window.md#copy-patches-from-another-game).
+
+The updater lists the patches and their total size, and asks you to confirm.
+Keep the following in mind:
+
+- The updater copies only patches that the other game installed or adopted with
+  the updater, and only those that this game doesn't have yet. It never
+  overwrites a file.
+- The updater checks each copy against the checksum that it recorded when the
+  other game installed the patch. If a file has changed since, the updater
+  doesn't copy it. Run `verify --deep` on the other game to see why.
+- To also catch a bad write on your own drive, add `--verify-copy`. The updater
+  then reads each copied file back and checks it before it uses the file. This
+  is off by default, because it reads every file a second time. The operating
+  system can serve part of that read from its cache, so it's a safety check,
+  not a guarantee.
+- Patch files that you downloaded by hand and never adopted aren't copied,
+  because the updater doesn't know which build they are. Adopt them in the
+  other game first.
+- A copied patch keeps its version. If the other game's patch is older than the
+  site's, `status` shows an update for it in this game.
+
 ## Data folders
 
 The updater writes patch files to the `Data` folder inside the game folder. If

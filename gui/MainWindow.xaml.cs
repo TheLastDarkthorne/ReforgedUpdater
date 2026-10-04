@@ -37,6 +37,7 @@ namespace ReforgedUpdater.Gui
         private DateTime _lastCheck;
         private bool _syncing;      // set while code, not the user, moves a picker
         private bool _downloading;  // byte progress is on screen; engine chatter goes to the log only
+        private string _progressVerb = "Downloading"; // "Copying" while patches come from another game
         private int _notes;         // warnings during the current run
         private Outcome _outcome;   // what the finished run wants the bubble to say
         private bool _greeting = true; // Belora's hello stays up until the first check is done
@@ -396,6 +397,7 @@ namespace ReforgedUpdater.Gui
             _outcome = null;
             _notes = 0;
             _downloading = false;
+            _progressVerb = "Downloading";
             // The progress card says what is happening, so the greeting can stay a moment longer.
             if (!_greeting) Say("On it!", title.TrimEnd('.'), MascotMood.Busy);
             ProgressTitle = title;
@@ -416,9 +418,14 @@ namespace ReforgedUpdater.Gui
             }
             catch (OperationCanceledException)
             {
-                AddLog(UiLevel.Warn, "Stopped. Partial downloads are kept and pick up where they left off.");
+                bool copying = _progressVerb == "Copying";
+                AddLog(UiLevel.Warn, copying
+                    ? "Stopped. Patches already copied stay; the one in progress was dropped."
+                    : "Stopped. Partial downloads are kept and pick up where they left off.");
                 Summarize();
-                Say("Okay, I stopped!", "Anything half-downloaded is kept, so next time picks up where this left off.", MascotMood.Idle);
+                Say("Okay, I stopped!", copying
+                    ? "The patch I was copying is dropped, so just copy again when you're ready."
+                    : "Anything half-downloaded is kept, so next time picks up where this left off.", MascotMood.Idle);
             }
             catch (UpdaterException ex) { Oops(ex.Message); }
             catch (CatalogException ex) { Oops(ex.Message + " The downloads page may have changed; the updater needs a fix for it."); }
@@ -536,6 +543,75 @@ namespace ReforgedUpdater.Gui
             });
         }
 
+        /// <summary>Other games that use the same patch set as this one, and so can share their patches.</summary>
+        private List<GameChoice> CopySources()
+        {
+            var mine = Edition.Find(_updater?.State.Edition);
+            if (mine == null) return new List<GameChoice>();
+
+            return Games.Where(g => !SamePath(g.Path, _wow.Root) && Directory.Exists(g.Path)
+                                    && Edition.Find(Store.Load<InstallState>(WowInstall.StatePathFor(g.Path)).Edition) == mine)
+                        .ToList();
+        }
+
+        private CopyPlan PlanCopyFrom(GameChoice game)
+        {
+            var sourceWow = Workspace.ApplySavedData(WowInstall.Open(game.Path), null, game.Registered ? game.Name : null);
+            using (var source = new Updater(sourceWow, _settings))
+                return _updater.PlanCopy(source, game.Name, _catalog, null);
+        }
+
+        private void OnCopyFrom(object sender, RoutedEventArgs e)
+        {
+            if (_updater == null || _catalog == null) return;
+
+            var sources = CopySources();
+            if (sources.Count == 0)
+            {
+                CuteDialog.Show(this, "No other game to copy from",
+                    "Patches only copy between games that use the same patch set, and none of your other games use "
+                    + _updater.Edition.Title + ".", "OK", null, MascotMood.Idle);
+                return;
+            }
+
+            var dialog = new CopyPatchesWindow(_currentGame.Name, sources, PlanCopyFrom) { Owner = this };
+            if (dialog.ShowDialog() == true) _ = CopyAsync(dialog.Plan, dialog.VerifyCopy);
+        }
+
+        private async Task CopyAsync(CopyPlan plan, bool verifyCopy)
+        {
+            if (plan == null || plan.Items.Count == 0 || _updater == null) return;
+
+            await RunAsync("Getting ready...", async ct =>
+            {
+                if (WowInstall.GameIsRunning() && !CuteDialog.Show(this, "Is World of Warcraft open?",
+                        "The game locks its patch files while it runs, so I can't swap them. Close it first, then press Try anyway.",
+                        "Try anyway", "Cancel", MascotMood.Oops))
+                    return;
+
+                _progressVerb = "Copying";
+                ProgressTitle = "Starting the copy...";
+                int done = await Task.Run(() => _updater.CopyFromAsync(plan, verifyCopy, ct), ct);
+
+                ProgressTitle = "Checking everything once more...";
+                ProgressIndeterminate = true;
+                await RefreshAsync(false, ct);
+
+                if (done < plan.Items.Count)
+                {
+                    _outcome = new Outcome(done == 0 ? "Hmm, I couldn't copy those" : "Copied " + done + " of " + plan.Items.Count + " patches",
+                        "The Activity log says what went wrong.", MascotMood.Oops);
+                    ShowLog = true;
+                }
+                else
+                {
+                    _outcome = new Outcome(done == 1 ? "Copied " + plan.Items[0].Entry.Display + "!" : "Copied " + done + " patches!",
+                        "They came from " + plan.SourceName + ". If they're older than the site's, there's an update ready.",
+                        MascotMood.Happy);
+                }
+            });
+        }
+
         // ================================================================ progress from the engine
 
         private static readonly Regex StepRx = new Regex(@"^\[(\d+)/(\d+)\]\s*(.+)$");
@@ -547,7 +623,7 @@ namespace ReforgedUpdater.Gui
 
             var step = StepRx.Match(label.Trim());
             string name = step.Success ? step.Groups[3].Value.Trim() : label.Trim();
-            ProgressTitle = "Downloading " + name
+            ProgressTitle = _progressVerb + " " + name
                             + (step.Success && step.Groups[2].Value != "1" ? "  ·  " + step.Groups[1].Value + " of " + step.Groups[2].Value : string.Empty);
 
             double fraction = total > 0 ? Math.Min(1, (double)done / total) : 0;
@@ -569,7 +645,7 @@ namespace ReforgedUpdater.Gui
             if (!IsBusy || !_downloading) return;
             _downloading = false;
             ProgressIndeterminate = true;
-            ProgressDetail = "Double-checking the download...";
+            ProgressDetail = _progressVerb == "Copying" ? "Double-checking the copy..." : "Double-checking the download...";
             Taskbar.ProgressState = TaskbarItemProgressState.Indeterminate;
         }
 
@@ -656,6 +732,7 @@ namespace ReforgedUpdater.Gui
         {
             bool ready = IsIdle && _updater != null && !ShowNeedsEdition;
             InstallAllItem.IsEnabled = ready && _rows.Any(r => r.State == ModuleState.NotInstalled);
+            CopyFromItem.IsEnabled = ready && _catalog != null && Games.Count > 1;
             VerifyItem.IsEnabled = ready && _rows.Any(r => r.Local != null);
             OpenGameItem.IsEnabled = _wow != null;
             ChangeDataItem.IsEnabled = IsIdle && _updater != null;
@@ -923,8 +1000,10 @@ namespace ReforgedUpdater.Gui
         {
             if (!IsBusy || !_downloading) return;
 
-            bool stop = CuteDialog.Show(this, "Stop downloading?",
-                "What's downloaded so far is kept, and next time picks up where this left off.",
+            bool copying = _progressVerb == "Copying";
+            bool stop = CuteDialog.Show(this, copying ? "Stop copying?" : "Stop downloading?",
+                copying ? "Patches that are already copied stay. The one in progress is dropped, and you can copy it again later."
+                        : "What's downloaded so far is kept, and next time picks up where this left off.",
                 "Stop and close", "Keep going", MascotMood.Oops);
             if (!stop) { e.Cancel = true; return; }
             _cancel?.Cancel();

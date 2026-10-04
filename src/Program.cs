@@ -24,7 +24,7 @@ namespace ReforgedUpdater
             catch (OperationCanceledException)
             {
                 Ui.EndProgress();
-                Ui.Warn("Cancelled. Partial downloads are kept and will resume next time.");
+                Ui.Warn("Cancelled. Partial downloads are kept and will resume next time. A patch that was being copied is dropped.");
                 return ExitError;
             }
             catch (UpdaterException ex) { Ui.EndProgress(); Ui.Error(ex.Message); return ExitError; }
@@ -112,6 +112,9 @@ namespace ReforgedUpdater
 
                     case "adopt":
                         return await Adopt(cli, updater, catalog, ct).ConfigureAwait(false);
+
+                    case "copy":
+                        return await CopyPatches(cli, updater, wow, catalog, settings, ct).ConfigureAwait(false);
 
                     case "remove":
                         return Remove(cli, updater, catalog);
@@ -332,6 +335,62 @@ namespace ReforgedUpdater
                 Ui.Warn("Only sizes were compared. A file of the right size but the wrong content would be"
                         + " recorded as current. Run \"adopt --verify\" to check the bytes against the server.");
             return ExitOk;
+        }
+
+        /// <summary>
+        /// Copies the patches another registered game already has, instead of downloading them
+        /// again. Only patches this game is missing are copied; nothing is overwritten.
+        /// </summary>
+        private static async Task<int> CopyPatches(CommandLine cli, Updater updater, WowInstall wow,
+                                                   List<CatalogEntry> catalog, Settings settings, CancellationToken ct)
+        {
+            string fromName = cli.Option("from");
+            if (string.IsNullOrWhiteSpace(fromName))
+            {
+                Ui.Error("Name the game to copy from.  Example: ReforgedUpdater copy --from warmane --game mine");
+                Ui.Info(RegisteredNames(settings));
+                return ExitError;
+            }
+
+            var game = settings.FindGame(fromName)
+                       ?? throw new UpdaterException("No game named \"" + fromName + "\". " + RegisteredNames(settings));
+            var sourceWow = Workspace.ApplySavedData(WowInstall.Open(game.Path), null, game.Name);
+
+            using (var source = new Updater(sourceWow, settings))
+            {
+                List<string> only = null;
+                if (cli.Values.Count > 0)
+                {
+                    var rows = catalog.Select(e => new ModuleStatus { Entry = e }).ToList();
+                    only = Resolve(cli.Values, rows).Select(r => r.Entry.Id).ToList();
+                }
+
+                var plan = updater.PlanCopy(source, game.Name, catalog, only);
+
+                foreach (string note in plan.Skipped) Ui.Info("  skipping " + note);
+                if (plan.Items.Count == 0) { Ui.Good("Nothing to copy from " + game.Name + "."); return ExitOk; }
+
+                Ui.Rule("Copy from " + game.Name);
+                foreach (var item in plan.Items)
+                    Ui.Info(string.Format(CultureInfo.InvariantCulture, "  {0,-16} {1,10}   {2}",
+                        item.Entry.Display, Ui.Bytes(item.Size), item.Source.Version != null ? "v" + item.Source.Version : string.Empty));
+                Ui.Info("  " + plan.Items.Count + " file(s), " + Ui.Bytes(plan.Bytes) + " to copy into " + wow.DataDir + ".");
+                Ui.Info(string.Empty);
+
+                if (cli.Flag("dry-run")) return ExitOk;
+
+                if (!Ui.Confirm("Continue?", cli.Flag("yes") || cli.Flag("y")))
+                {
+                    Ui.Info("Nothing was changed.");
+                    return ExitOk;
+                }
+
+                int done = await updater.CopyFromAsync(plan, cli.Flag("verify-copy"), ct).ConfigureAwait(false);
+                Ui.Info(string.Empty);
+                Ui.Good("Copy complete: " + done + " of " + plan.Items.Count + " file(s). "
+                        + "Run \"status\" to see whether any are older than the site's.");
+                return done == plan.Items.Count ? ExitOk : ExitError;
+            }
         }
 
         private static int Remove(CommandLine cli, Updater updater, List<CatalogEntry> catalog)
@@ -803,6 +862,10 @@ COMMANDS
   adopt [id...]       Register .mpq files already in Data that you downloaded by
                       hand, without re-downloading them. --verify identifies them
                       by content instead of by size (reads every byte)
+  copy --from <game> [id...]
+                      Copy the patches another registered game has, instead of
+                      downloading them again. Both games must use the same patch
+                      set. Only patches this game is missing are copied
   remove <id...>      Delete a module's .mpq and stop tracking it
   verify [--deep]     Re-check installed files; --deep reads them and compares
                       the bytes against the published build
@@ -842,6 +905,8 @@ MODULE IDS
 
 OPTIONS
   --game <name>       Use a registered game
+  --from <game>       copy: the registered game to copy patches from
+  --verify-copy       copy: read each copy back from disk and check it (slower)
   --all-games         Run status/update/adopt/verify/list for every registered game
   --wow <folder>      Use this client folder for one run
   --data <folder>     Use this Data folder for one run
@@ -864,6 +929,7 @@ EXAMPLES
   ReforgedUpdater adopt --verify         keep patches you downloaded by hand
   ReforgedUpdater install A C G I        install the core visual modules
   ReforgedUpdater install S-standalone   the audio pack that needs no Patch-M
+  ReforgedUpdater copy --from warmane --game mine    reuse another game's patches
   ReforgedUpdater edition turtle         a vanilla client that plays on Turtle
   ReforgedUpdater update --yes           update everything, unattended
   ReforgedUpdater verify --deep          detect a corrupted .mpq
@@ -887,10 +953,10 @@ restart. Close World of Warcraft before updating - the client keeps the
         public string Option(string name) => _options.TryGetValue(name, out string value) ? value : null;
 
         private static readonly HashSet<string> Commands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "status", "list", "install", "update", "adopt", "remove", "verify", "path", "data", "edition", "games", "help" };
+        { "status", "list", "install", "update", "adopt", "copy", "remove", "verify", "path", "data", "edition", "games", "help" };
 
         private static readonly HashSet<string> TakesValue = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "wow", "path", "data", "edition", "game" };
+        { "wow", "path", "data", "edition", "game", "from" };
 
         public static CommandLine Parse(string[] args)
         {

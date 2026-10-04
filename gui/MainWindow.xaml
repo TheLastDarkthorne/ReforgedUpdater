@@ -292,6 +292,9 @@
                                     <MenuItem Header="Install every patch" Click="OnInstallAll" x:Name="InstallAllItem">
                                         <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" /></MenuItem.Icon>
                                     </MenuItem>
+                                    <MenuItem Header="Copy patches from another game…" Click="OnCopyFrom" x:Name="CopyFromItem">
+                                        <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE8C8;" /></MenuItem.Icon>
+                                    </MenuItem>
                                     <MenuItem Header="Check file contents (slow)" Click="OnVerifyDeep" x:Name="VerifyItem">
                                         <MenuItem.Icon><TextBlock Style="{StaticResource Glyph}" Text="&#xE9D5;" /></MenuItem.Icon>
                                     </MenuItem>
