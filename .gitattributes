@@ -1,0 +1,2 @@
+# Git runs the hooks with sh, which can't read Windows line endings.
+.githooks/* text eol=lf

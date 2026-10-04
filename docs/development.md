@@ -29,29 +29,52 @@ GitHub. It builds both programs on a Windows runner for every push to `main`
 and every pull request, and keeps the two `.exe` files as a workflow artifact
 for a short time. These builds are versioned `0.0.0-ci`.
 
-To publish a release, push a tag that starts with `v`:
+Releases are automatic. The `Release PR` workflow in
+`.github/workflows/release-please.yml` runs [release-please](https://github.com/googleapis/release-please)
+on every push to `main`. It reads the commit messages since the last release,
+and keeps one open pull request that's named after the next version. That pull
+request has the changelog and the new version number.
+
+To publish a release, merge that pull request. The workflow then tags the
+release, builds both programs with that version, and adds the two `.exe` files,
+a `.zip` of both, and a `SHA256SUMS.txt` file to the GitHub release.
+
+### Commit messages
+
+release-please picks the version from your commit messages, so each one must
+use the [Conventional Commits](https://www.conventionalcommits.org/) style:
+
+| Message | Release |
+| --- | --- |
+| `fix: keep the Stop button enabled` | Patch, such as 1.0.1 |
+| `feat(gui): copy patches between games` | Minor, such as 1.1.0 |
+| `feat!: drop the old settings file` | Major, such as 2.0.0 |
+| `docs:`, `refactor:`, `test:`, `build:`, `ci:`, `chore:`, `style:` | No release on their own |
+
+A commit in another style isn't in the changelog, and doesn't change the
+version. To reject those commits on your computer, turn on the hook that's in
+the repository, once for each clone:
 
 ```bash
-git tag v1.2.0
-git push origin v1.2.0
+git config core.hooksPath .githooks
 ```
-
-The workflow builds both programs with that version, and then creates a GitHub
-release named after the tag. The release has the two `.exe` files, a `.zip` of
-both, and a `SHA256SUMS.txt` file, with notes written from the commits since
-the last release.
 
 Keep the following in mind:
 
-- The tag must look like `v1.2.3`. A tag with a suffix, such as
-  `v1.2.0-beta.1`, is published as a pre-release. Any other tag stops the
-  workflow before it builds.
+- The first release PR appears after the first `feat:` or `fix:` commit that
+  follows the `v1.0.0` tag.
+- The repository setting **Allow GitHub Actions to create and approve pull
+  requests** must be on, in **Settings** > **Actions** > **General**. Without it,
+  release-please can't open its pull request.
+- A tag that you push yourself, such as `v1.2.0`, still builds and publishes a
+  release. Prefer the release PR, which keeps the version and the changelog in
+  step.
 - The tag sets the version of both programs, so you don't edit the `Version`
   lines in the `.csproj` files for a release. Those lines only apply to builds
   on your own computer.
-- To rerun a build without pushing, open **Actions** on GitHub, select
-  **Build and release**, and click **Run workflow**. This never publishes a
-  release.
+- To rerun a build without releasing, open **Actions** on GitHub, select
+  **Build and release**, and click **Run workflow** on a branch. Run on a tag,
+  it uploads the files to that tag's release again.
 
 ## Project layout
 

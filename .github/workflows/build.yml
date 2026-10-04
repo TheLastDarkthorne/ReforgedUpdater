@@ -96,8 +96,15 @@ jobs:
           flags=""
           if [[ "$VERSION" == *-* ]]; then flags="--prerelease"; fi
 
-          gh release create "$GITHUB_REF_NAME" $flags \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Project Reforged Updater $VERSION" \
-            --generate-notes \
-            ReforgedUpdater.exe ReforgedUpdaterGui.exe "ReforgedUpdater-$VERSION.zip" SHA256SUMS.txt
+          files=(ReforgedUpdater.exe ReforgedUpdaterGui.exe "ReforgedUpdater-$VERSION.zip" SHA256SUMS.txt)
+
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            # release-please already made this release and wrote its notes, so add the files to it.
+            gh release upload "$GITHUB_REF_NAME" --clobber --repo "$GITHUB_REPOSITORY" "${files[@]}"
+          else
+            gh release create "$GITHUB_REF_NAME" $flags \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Project Reforged Updater $VERSION" \
+              --generate-notes \
+              "${files[@]}"
+          fi

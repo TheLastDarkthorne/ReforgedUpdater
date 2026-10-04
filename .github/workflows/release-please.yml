@@ -1,0 +1,32 @@
+name: Release PR
+
+# Keeps a "release vX.Y.Z" pull request up to date from the commit messages on main.
+# Merging that pull request tags the release. Builds that follow the tag are started
+# here with workflow_dispatch, because a tag pushed with the built-in token doesn't
+# start the build workflow by itself.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Build the release and attach the files
+        if: steps.release.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: gh workflow run build.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG"

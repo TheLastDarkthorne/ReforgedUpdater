@@ -1,0 +1,33 @@
+#!/bin/sh
+# Requires Conventional Commits, because release-please reads them to pick the next version:
+#   feat: ...   fix: ...   docs: ...   feat(gui): ...   fix!: ...
+# Turn this on once per clone with:  git config core.hooksPath .githooks
+
+subject=$(head -n 1 "$1")
+
+# Merges, reverts, and fixup commits that git writes itself pass as they are.
+case "$subject" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+pattern='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([a-z0-9._-]+\))?!?: .+'
+if printf '%s\n' "$subject" | grep -Eq "$pattern"; then
+  exit 0
+fi
+
+cat >&2 <<MSG
+This commit message doesn't use the Conventional Commits style:
+
+  $subject
+
+Start it with a type, then a colon and a space, for example:
+
+  feat: copy patches between games
+  fix(gui): keep the Stop button enabled
+  docs: explain the copy option
+  feat!: drop the old settings file     (a breaking change)
+
+Types: feat, fix, perf, refactor, docs, test, build, ci, chore, style, revert.
+"feat" makes a minor release, "fix" and "perf" a patch release, and "!" a major one.
+MSG
+exit 1
