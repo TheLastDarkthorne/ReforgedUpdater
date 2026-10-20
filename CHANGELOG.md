@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/TheLastDarkthorne/ReforgedUpdater/compare/v1.0.1...v1.1.0) (2026-10-20)
+
+
+### Features
+
+* **tools:** download and update the WotLK extra tools ([f516a75](https://github.com/TheLastDarkthorne/ReforgedUpdater/commit/f516a75868eb7e004c0f43f65e4fa96452d222c5))
+
 ## [1.0.1](https://github.com/TheLastDarkthorne/ReforgedUpdater/compare/v1.0.0...v1.0.1) (2026-10-04)
 
 
