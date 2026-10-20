@@ -175,6 +175,22 @@ If **Copy patches from another game…** is unavailable, you have only one game.
 If the window says that there's no other game to copy from, none of your other
 games use this game's patch set.
 
+## Install the extra tools
+
+For a WotLK game, the updater can also download and update the tools that the
+downloads page lists besides the patches: the `Wow.exe` patcher, DXVK, the fog,
+and the HD fonts.
+
+1. Click **More** (**⋯**), and then click **Tools and extras…**.
+1. On a tool's card, click **Install**. A dialog shows what the tool does and
+   where it comes from.
+
+The dialog shows the download on its own progress strip, and you can click
+**Stop**. When the patcher is installed, its card has a **Run patcher** button.
+The updater opens the patcher only when you click it, and you choose the patches
+in the patcher's own menu. For all of the buttons, and for the fog's settings,
+see [Extra tools](tools.md).
+
 ## Adopt patches that you already have
 
 If you downloaded patches by hand before you used the updater, their cards show
@@ -224,6 +240,7 @@ menu:
 | Menu item | What it does |
 | --- | --- |
 | **Copy patches from another game…** | Copies patches that another game of yours already has, without downloading them. For more information, see [Copy patches from another game](#copy-patches-from-another-game). |
+| **Tools and extras…** | Opens the tools for this game: the `Wow.exe` patcher, DXVK, the fog, and the HD fonts. For more information, see [Extra tools](tools.md). |
 | **Install every patch** | Installs every patch that isn't installed. For a patch with several variants, such as Patch-S, the updater installs the first variant. |
 | **Check file contents (slow)** | Reads every installed patch file and compares it with the published build. Files that differ are marked **Update ready**. |
 | **Open the game folder** | Opens the game folder in File Explorer. |

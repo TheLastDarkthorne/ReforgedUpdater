@@ -63,6 +63,32 @@ The downloads page or the file server didn't answer. Check your internet
 connection, and then try again. Partial downloads are kept, so the next attempt
 continues from where the last one stopped.
 
+## GitHub is limiting requests
+
+**Message:** `GitHub is limiting requests from your network …`
+
+The tools come from GitHub, which allows about 60 requests an hour from one
+network without an account. Each tool takes one request each time that you
+check. Wait for the hour to pass, and then check again. If you share a network
+with many people, the limit is shared too.
+
+## A tool can't be installed because a file is already there
+
+**Message:** `These files are already in the game folder and did not come from this updater …`
+
+The updater doesn't replace a file that it didn't place, such as a `d3d9.dll`
+or `version.dll` from another source. If the message names a file from an
+earlier manual install of the same tool, delete it or move it aside, and then
+install the tool again. If it names a file from a different mod, the two mods
+need the same file name and can't both be installed that way.
+
+## Lexara doesn't load
+
+If the Lexara card says that your `Wow.exe` doesn't load it, run the patcher and
+keep patch No. 30 selected. If it says that `dinput8.dll` is also in the game
+folder, delete that file, or Lexara loads twice. For more information, see
+[Lexara and the patcher](tools.md#lexara-and-the-patcher).
+
 ## The downloads page layout changed
 
 **Messages:** `No download cards found - the page layout has changed.` or

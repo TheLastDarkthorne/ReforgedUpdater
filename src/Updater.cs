@@ -75,6 +75,11 @@ namespace ReforgedUpdater
 
         public void Dispose() => _http.Dispose();
 
+        private ToolKit _tools;
+
+        /// <summary>The extra tools for this game. Shares this updater's state, so the two never overwrite each other's records.</summary>
+        public ToolKit Tools => _tools ?? (_tools = new ToolKit(_wow, _state, Save, _http));
+
         public Task<RemoteInfo> ProbeAsync(string url, CancellationToken ct) => _http.ProbeAsync(url, ct);
 
         /// <summary>The edition this run works with, set by <see cref="ResolveEdition"/>.</summary>

@@ -88,12 +88,15 @@ run the same engine.
 | `src/Catalog.cs` | Reads the downloads page into a list of patches. |
 | `src/Edition.cs` | The WotLK, Kronos, and Turtle WoW patch sets. |
 | `src/Updater.cs` | Compares the site with the disk, and installs, adopts, removes, and verifies patches. |
+| `src/Tools.cs` | The extra tools: what each one is, where its files go, GitHub releases, and the safe placement of files. |
+| `src/ToolsCommand.cs` | The `tools` command. The window project leaves this file out. |
 | `src/Downloader.cs` | Resumable downloads, server checks, and hashing. |
 | `src/ContentCheck.cs` | Recalculates the server's `ETag` from a file on disk. |
 | `src/WowInstall.cs` | Finds the game folder, and owns its paths and file-lock checks. |
 | `src/State.cs` | The settings file and each game's `state.json`. |
 | `src/Ui.cs` | Console output and the progress bar, or the window when one is attached. |
 | `gui/MainWindow.xaml` | The main window: game picker, patch cards, progress, and activity log. |
+| `gui/ToolsWindow.xaml` | The **Tools and extras** dialog. |
 | `gui/AddGameWindow.xaml` | The **Add a game** dialog. |
 | `gui/CuteDialog.xaml` | The confirmation and message dialog. |
 | `gui/Mascot.xaml` | Belora, drawn in XAML, with her expressions and animations. |

@@ -28,6 +28,8 @@ Windows 11 without any extra runtime.
   cards in the window.
 - Copies patches between games that use the same patch set, instead of
   downloading them again.
+- Downloads and updates the extra tools that the WotLK downloads page lists: the
+  `Wow.exe` patcher, DXVK, the fog, and the HD fonts. You run the patcher yourself.
 - Detects silent re-uploads on the server, not only new version numbers.
 - Adopts patches that you downloaded by hand, and checks their content against
   the published build without downloading them again.
@@ -58,6 +60,7 @@ step-by-step instructions, see [Get started](docs/get-started.md).
 | [Use the window](docs/window.md) | Learn every part of the window: patch cards, games, the menu, and themes. |
 | [Command-line reference](docs/command-line.md) | Look up commands, options, exit codes, and the JSON output. |
 | [Games, editions, and Data folders](docs/games-and-editions.md) | Understand patch sets, look after several games, and move the `Data` folder. |
+| [Extra tools](docs/tools.md) | Install the `Wow.exe` patcher, DXVK, the fog, and the HD fonts for WotLK, and keep them up to date. |
 | [How the updater works](docs/how-it-works.md) | Learn how updates are detected, how downloads resume, and which files the updater writes. |
 | [Troubleshooting](docs/troubleshooting.md) | Fix common problems, such as locked files or a missing game folder. |
 | [Development](docs/development.md) | Change the code, the theme, or Belora. |

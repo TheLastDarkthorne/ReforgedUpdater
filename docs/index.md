@@ -19,6 +19,7 @@ The updater comes as two programs that share one engine and one settings file:
 | [Use the window](window.md) | Learn every part of the window: patch cards, games, the menu, and themes. |
 | [Command-line reference](command-line.md) | Look up commands, options, exit codes, and the JSON output. |
 | [Games, editions, and Data folders](games-and-editions.md) | Understand patch sets, look after several games, and move the `Data` folder. |
+| [Extra tools](tools.md) | Install the `Wow.exe` patcher, DXVK, the fog, and the HD fonts for WotLK, and keep them up to date. |
 | [How the updater works](how-it-works.md) | Learn how updates are detected, how downloads resume, and which files the updater writes. |
 | [Troubleshooting](troubleshooting.md) | Fix common problems, such as locked files or a missing game folder. |
 | [Development](development.md) | Change the code, the theme, or Belora, the mascot. |

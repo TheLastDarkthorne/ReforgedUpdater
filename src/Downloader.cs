@@ -65,6 +65,30 @@ namespace ReforgedUpdater
             }
         }
 
+        /// <summary>A small file read into memory, with the server's version tag for it.</summary>
+        public sealed class Fetched
+        {
+            public byte[] Bytes;
+            public string Tag;   // the ETag, else Last-Modified: whatever identifies this version
+        }
+
+        public async Task<Fetched> GetBytesAsync(string url, CancellationToken ct)
+        {
+            using (var cts = CancellationTokenSource.CreateLinkedTokenSource(ct))
+            {
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
+                using (var response = await _client.GetAsync(url, cts.Token).ConfigureAwait(false))
+                {
+                    response.EnsureSuccessStatusCode();
+                    return new Fetched
+                    {
+                        Bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false),
+                        Tag = response.Headers.ETag?.Tag ?? response.Content.Headers.LastModified?.UtcDateTime.ToString("R")
+                    };
+                }
+            }
+        }
+
         /// <summary>HEAD the file; falls back to a one-byte ranged GET for servers that refuse HEAD.</summary>
         public async Task<RemoteInfo> ProbeAsync(string url, CancellationToken ct)
         {

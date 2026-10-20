@@ -90,9 +90,11 @@ and then run the update again.
 | Path | Contents |
 | --- | --- |
 | `reforged-updater.json`, next to the programs | The games that you added, the game that you used last, and the window's theme. Both programs share this file. |
-| `GAME_FOLDER\.reforged\state.json` | The game's edition and `Data` folder, and a record of each installed patch. |
+| `GAME_FOLDER\.reforged\state.json` | The game's edition and `Data` folder, a record of each installed patch, and a record of each file that an extra tool placed. |
 | `.reforged\cache\` next to the `Data` folder | Partial downloads. You can delete this folder at any time. |
 | `DATA_FOLDER\patch-*.mpq` | The patch files. |
+| `GAME_FOLDER\d3d9.dll`, `version.dll`, `Lexara.dll`, and others | Files from the extra tools, next to `Wow.exe`. For more information, see [Extra tools](tools.md). |
+| `GAME_FOLDER\Reforged Patcher\` | The `Wow.exe` patcher. It also keeps its own settings and its `Wow.exe` backups in this folder. |
 
 If the folder that contains the programs is read-only, for example
 `C:\Program Files`, the updater saves `reforged-updater.json` in

@@ -86,6 +86,15 @@ namespace ReforgedUpdater
 
                 var edition = updater.ResolveEdition(cli.Option("edition"));
 
+                if (cli.Command == "tools")
+                {
+                    if (gameName != null) Ui.Info("Game:    " + gameName);
+                    Ui.Info("Client:  " + wow.Root);
+                    Ui.Info("Edition: " + edition.Title);
+                    Ui.Info(string.Empty);
+                    return await ToolsCommand.RunAsync(cli, updater, wow, ct).ConfigureAwait(false);
+                }
+
                 if (gameName != null) Ui.Info("Game:    " + gameName);
                 Ui.Info("Client:  " + wow.Root);
                 Ui.Info("Data:    " + wow.DataDir + (wow.DataIsCustom ? "   (custom)" : string.Empty));
@@ -192,10 +201,15 @@ namespace ReforgedUpdater
         {
             var rows = await updater.GetStatusAsync(catalog, probeRemote: !cli.Flag("fast"), ct).ConfigureAwait(false);
 
+            bool toolUpdates = false;
             if (cli.Flag("json")) { Console.WriteLine(StatusJson(rows)); }
-            else { PrintStatus(rows); }
+            else
+            {
+                PrintStatus(rows);
+                toolUpdates = await ToolsCommand.SummaryAsync(updater, !cli.Flag("fast"), ct).ConfigureAwait(false);
+            }
 
-            return rows.Any(r => r.NeedsDownload) ? ExitUpdatesAvailable : ExitOk;
+            return rows.Any(r => r.NeedsDownload) || toolUpdates ? ExitUpdatesAvailable : ExitOk;
         }
 
         private static async Task<int> Install(CommandLine cli, Updater updater, List<CatalogEntry> catalog, CancellationToken ct)
@@ -233,6 +247,17 @@ namespace ReforgedUpdater
         }
 
         private static async Task<int> Update(CommandLine cli, Updater updater, List<CatalogEntry> catalog, CancellationToken ct)
+        {
+            int patches = await UpdatePatches(cli, updater, catalog, ct).ConfigureAwait(false);
+
+            // Naming modules means just those modules; otherwise the installed tools are kept current too.
+            if (cli.Values.Count > 0) return patches;
+
+            int tools = await ToolsCommand.UpdateInstalledAsync(cli, updater, ct).ConfigureAwait(false);
+            return patches == ExitError || tools == ExitError ? ExitError : ExitOk;
+        }
+
+        private static async Task<int> UpdatePatches(CommandLine cli, Updater updater, List<CatalogEntry> catalog, CancellationToken ct)
         {
             var rows = await updater.GetStatusAsync(catalog, probeRemote: !cli.Flag("fast"), ct).ConfigureAwait(false);
 
@@ -867,6 +892,16 @@ COMMANDS
                       downloading them again. Both games must use the same patch
                       set. Only patches this game is missing are copied
   remove <id...>      Delete a module's .mpq and stop tracking it
+  tools               The extra downloads: the Wow.exe patcher, DXVK, fog and fonts.
+                      They come from GitHub and go in the game folder; you run the
+                      patcher yourself. Actions:
+                        tools                        what is installed and what is new
+                        tools install <tool...>      patcher, dxvk, fog, lexara   (--all)
+                        tools update [tool...]       bring installed tools up to date
+                        tools remove <tool...>       delete what was installed
+                        tools run patcher            open the patcher on this game
+                        tools preset [fog]           compare/apply the recommended settings
+                        tools open [tool]            open the tool's folder
   verify [--deep]     Re-check installed files; --deep reads them and compares
                       the bytes against the published build
   games               List the game folders you have registered
@@ -930,6 +965,7 @@ EXAMPLES
   ReforgedUpdater install A C G I        install the core visual modules
   ReforgedUpdater install S-standalone   the audio pack that needs no Patch-M
   ReforgedUpdater copy --from warmane --game mine    reuse another game's patches
+  ReforgedUpdater tools install patcher dxvk fog lexara    the extra tools for WotLK
   ReforgedUpdater edition turtle         a vanilla client that plays on Turtle
   ReforgedUpdater update --yes           update everything, unattended
   ReforgedUpdater verify --deep          detect a corrupted .mpq
@@ -953,7 +989,7 @@ restart. Close World of Warcraft before updating - the client keeps the
         public string Option(string name) => _options.TryGetValue(name, out string value) ? value : null;
 
         private static readonly HashSet<string> Commands = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "status", "list", "install", "update", "adopt", "copy", "remove", "verify", "path", "data", "edition", "games", "help" };
+        { "status", "list", "install", "update", "adopt", "copy", "remove", "verify", "path", "data", "edition", "games", "tools", "help" };
 
         private static readonly HashSet<string> TakesValue = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         { "wow", "path", "data", "edition", "game", "from" };

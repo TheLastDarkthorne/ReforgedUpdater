@@ -30,6 +30,50 @@ namespace ReforgedUpdater
         [DataMember(Order = 9)] public bool ContentDiffers { get; set; }
     }
 
+    /// <summary>One file an extra tool put in the game folder, with what it looked like when it was placed.</summary>
+    [DataContract]
+    internal sealed class ToolFile
+    {
+        /// <summary>Relative to the game folder, with forward slashes.</summary>
+        [DataMember(Order = 0)] public string Path { get; set; }
+        [DataMember(Order = 1)] public string Sha256 { get; set; }
+        [DataMember(Order = 2)] public long Size { get; set; }
+
+        /// <summary>A settings file the user may have edited: updates and removal leave it alone.</summary>
+        [DataMember(Order = 3)] public bool Config { get; set; }
+    }
+
+    /// <summary>An extra tool (the Wow.exe patcher, DXVK, ...) the updater placed for this game.</summary>
+    [DataContract]
+    internal sealed class InstalledTool
+    {
+        [DataMember(Order = 0)] public string Id { get; set; }
+
+        /// <summary>The release tag it came from, without a leading "v".</summary>
+        [DataMember(Order = 1)] public string Version { get; set; }
+        [DataMember(Order = 2)] public string InstalledAt { get; set; }
+        [DataMember(Order = 3)] public List<ToolFile> Files { get; set; }
+
+        /// <summary>"name=sha256" for each release file used, so a file re-uploaded under the same tag still shows as an update.</summary>
+        [DataMember(Order = 4)] public List<string> Assets { get; set; }
+
+        /// <summary>The version of the settings preset last applied or offered, from the server's ETag.</summary>
+        [DataMember(Order = 5, EmitDefaultValue = false)] public string PresetTag { get; set; }
+
+        public InstalledTool()
+        {
+            Files = new List<ToolFile>();
+            Assets = new List<string>();
+        }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            if (Files == null) Files = new List<ToolFile>();
+            if (Assets == null) Assets = new List<string>();
+        }
+    }
+
     [DataContract]
     internal sealed class InstallState
     {
@@ -47,10 +91,14 @@ namespace ReforgedUpdater
         /// </summary>
         [DataMember(Order = 4)] public string DataPath { get; set; }
 
+        /// <summary>Extra tools placed in the game folder (not the Data folder). Absent in older files.</summary>
+        [DataMember(Order = 5, EmitDefaultValue = false)] public List<InstalledTool> Tools { get; set; }
+
         public InstallState()
         {
             SchemaVersion = 1;
             Files = new List<InstalledFile>();
+            Tools = new List<InstalledTool>();
         }
 
         // The serializer skips constructors, so a file missing a member leaves it null.
@@ -58,7 +106,11 @@ namespace ReforgedUpdater
         private void OnDeserialized(StreamingContext context)
         {
             if (Files == null) Files = new List<InstalledFile>();
+            if (Tools == null) Tools = new List<InstalledTool>();
         }
+
+        public InstalledTool FindTool(string id) =>
+            Tools.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.OrdinalIgnoreCase));
 
         public InstalledFile Find(string id) =>
             Files.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.OrdinalIgnoreCase));

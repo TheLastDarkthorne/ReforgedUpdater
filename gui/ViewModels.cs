@@ -20,6 +20,111 @@ namespace ReforgedUpdater.Gui
             Bubbles[string.IsNullOrEmpty(letter) ? 0 : letter[0] % Bubbles.Length];
     }
 
+    /// <summary>One tool card in the Tools window.</summary>
+    public sealed class ToolItem
+    {
+        internal ToolStatus Status { get; }
+
+        internal ToolItem(ToolStatus status) { Status = status; }
+
+        private ToolDef Def => Status.Def;
+
+        public string Title => Def.Name;
+        public string Summary => Def.Summary;
+        public string Warning => Def.Warning;
+        public string RepoUrl => Def.RepoUrl;
+
+        public bool IsInstalled => Status.Local != null;
+        public bool IsPatcher => Def == ToolDef.Patcher;
+
+        /// <summary>The patcher's Run button appears once it is installed, not before.</summary>
+        public bool CanRunPatcher => IsPatcher && IsInstalled;
+        public bool HasSettings => IsInstalled && Def.SettingsFile != null;
+        public bool HasPreset => IsInstalled && Def.PresetUrl != null;
+        public bool PresetChanged => Status.PresetChanged;
+        public string PresetText => Status.PresetChanged ? "Settings changed" : "Recommended settings";
+
+        public bool CanInstall => Status.NeedsInstall;
+
+        public string InstallText
+        {
+            get
+            {
+                switch (Status.State)
+                {
+                    case ToolState.UpdateAvailable: return "Update";
+                    case ToolState.Damaged: return "Repair";
+                    default: return "Install";
+                }
+            }
+        }
+
+        public string VersionLine
+        {
+            get
+            {
+                string size = Status.DownloadSize > 0 ? " · " + Ui.Bytes(Status.DownloadSize) : string.Empty;
+                if (Status.Local == null)
+                    return Status.Remote != null ? "Latest " + Status.Remote.Version + size : "Could not check GitHub";
+                if (Status.State == ToolState.Damaged) return "Installed " + Status.LocalVersion + " · " + Status.Detail;
+                if (Status.State == ToolState.UpdateAvailable) return "You have " + Status.LocalVersion + " · latest " + Status.RemoteVersion + size;
+                return "Installed " + Status.LocalVersion + (Status.State == ToolState.Unknown ? " · could not check GitHub" : string.Empty);
+            }
+        }
+
+        public string NotesText => string.Join("\n", Status.Notes);
+        public bool HasNotes => Status.Notes.Count > 0;
+
+        public string StateText
+        {
+            get
+            {
+                switch (Status.State)
+                {
+                    case ToolState.UpToDate: return "Up to date";
+                    case ToolState.UpdateAvailable: return "Update ready";
+                    case ToolState.Damaged: return "Needs repair";
+                    case ToolState.Unknown: return "Installed";
+                    default: return "Not installed";
+                }
+            }
+        }
+
+        public string StateGlyph
+        {
+            get
+            {
+                switch (Status.State)
+                {
+                    case ToolState.UpToDate: return "";
+                    case ToolState.UpdateAvailable: return "";
+                    case ToolState.Damaged: return "";
+                    case ToolState.Unknown: return "";
+                    default: return "";
+                }
+            }
+        }
+
+        private string AccentKey
+        {
+            get
+            {
+                switch (Status.State)
+                {
+                    case ToolState.UpToDate: case ToolState.Unknown: return "Mint";
+                    case ToolState.UpdateAvailable: return "Sky";
+                    case ToolState.Damaged: return "Berry";
+                    default: return "Lilac";
+                }
+            }
+        }
+
+        public Brush Accent => Palette.Get(AccentKey);
+        public Brush AccentSoft => Palette.Get(AccentKey + "Soft");
+
+        public string InstallName => InstallText + " " + Def.Name;
+    }
+
     /// <summary>One module card.</summary>
     public sealed class ModuleItem : INotifyPropertyChanged
     {

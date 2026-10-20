@@ -578,6 +578,21 @@ namespace ReforgedUpdater.Gui
             if (dialog.ShowDialog() == true) _ = CopyAsync(dialog.Plan, dialog.VerifyCopy);
         }
 
+        private void OnTools(object sender, RoutedEventArgs e)
+        {
+            if (_updater == null) return;
+
+            if (ToolKit.For(_updater.Edition).Count == 0)
+            {
+                CuteDialog.Show(this, "No extra tools here yet",
+                    "The downloads page for " + _updater.Edition.Title + " lists some tools besides the patches, but I can't set those up yet. "
+                    + "You'll find them on the downloads page, from the More menu.", "OK", null, MascotMood.Idle);
+                return;
+            }
+
+            new ToolsWindow(_updater, _currentGame?.Name ?? _wow.Root) { Owner = this }.ShowDialog();
+        }
+
         private async Task CopyAsync(CopyPlan plan, bool verifyCopy)
         {
             if (plan == null || plan.Items.Count == 0 || _updater == null) return;
@@ -733,6 +748,7 @@ namespace ReforgedUpdater.Gui
             bool ready = IsIdle && _updater != null && !ShowNeedsEdition;
             InstallAllItem.IsEnabled = ready && _rows.Any(r => r.State == ModuleState.NotInstalled);
             CopyFromItem.IsEnabled = ready && _catalog != null && Games.Count > 1;
+            ToolsItem.IsEnabled = ready;
             VerifyItem.IsEnabled = ready && _rows.Any(r => r.Local != null);
             OpenGameItem.IsEnabled = _wow != null;
             ChangeDataItem.IsEnabled = IsIdle && _updater != null;

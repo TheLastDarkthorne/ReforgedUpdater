@@ -32,6 +32,7 @@ either `--game warmane` or `--game=warmane`.
 | `update [MODULE_ID ...]` | Downloads every installed patch that changed. With IDs, updates only those patches. |
 | `adopt [MODULE_ID ...]` | Starts tracking patch files that you downloaded by hand, without downloading them again. Without IDs, adopts every untracked file. |
 | `copy --from NAME [MODULE_ID ...]` | Copies the patches that another game of yours has, instead of downloading them again. Both games must use the same patch set. Copies only the patches that this game doesn't have. With IDs, copies only those patches. For more information, see [Copy patches from another game](games-and-editions.md#copy-patches-from-another-game). |
+| `tools [ACTION]` | Looks after the extra tools for a WotLK game: the `Wow.exe` patcher, DXVK, the fog, and the HD fonts. Without an action, shows what's installed. For more information, see [Tools](#tools). |
 | `remove MODULE_ID ...` | Deletes the patch files and stops tracking them. With `--keep-file`, only stops tracking them. |
 | `verify` | Asks the server about every installed file and prints the status table. With `--deep`, also reads each file and compares its content with the published build. |
 | `games` | Lists the games that you added. |
@@ -57,7 +58,7 @@ files and the total size, and asks you to confirm. To skip the question, add
 | `--wow FOLDER` | Uses this game folder for one run. `--path FOLDER` does the same. |
 | `--data FOLDER` | Uses this `Data` folder for one run, without saving it. |
 | `--edition EDITION` | Uses this patch set, and remembers it for the game. |
-| `--all` | With `install`, installs every patch that isn't installed. |
+| `--all` | With `install`, installs every patch that isn't installed. With `tools install`, installs every tool. |
 | `--yes`, `-y` | Doesn't ask for confirmation. |
 | `--dry-run` | Shows what would be downloaded or copied, and changes nothing. |
 | `--fast` | Skips the server checks and compares version labels only. |
@@ -76,6 +77,26 @@ for games. For more information, see [How the updater finds your game](games-and
 
 `--all-games` can't be combined with `--game`, `--wow`, `--data`, `--edition`,
 or `--json`, because those options describe a single game.
+
+## Tools
+
+`tools` takes an action as its first word. The tool IDs are `patcher`, `dxvk`,
+`fog`, and `lexara`. For what each tool is and where its files go, see
+[Extra tools](tools.md).
+
+| Command | Description |
+| --- | --- |
+| `tools` | Shows each tool's installed and latest version, and notes such as whether `Wow.exe` has been patched. `tools status` does the same. |
+| `tools install TOOL ...` | Downloads the tools, checks them, and places their files. With `--all`, installs every tool that isn't installed. |
+| `tools update [TOOL ...]` | Updates the installed tools. Without IDs, updates every installed tool. |
+| `tools remove TOOL ...` | Deletes the files that the updater placed. Your settings stay. |
+| `tools run patcher` | Opens the patcher on this game's `Wow.exe`, in your console, after you confirm. The updater doesn't choose any of the patcher's options. |
+| `tools preset [fog]` | Compares your `CoAVolFog.ini` with the recommended settings, and asks before it replaces your file. |
+| `tools open [TOOL]` | Opens the tool's folder in File Explorer. Without an ID, opens the patcher's folder. |
+
+The tools commands accept `--game`, `--yes`, `--dry-run`, and `--fast`.
+`ReforgedUpdater status` also lists the installed tools, and
+`ReforgedUpdater update` also updates them after the patches.
 
 ## Module IDs
 
@@ -113,7 +134,7 @@ the following:
 | --- | --- |
 | `0` | Success. For `status` and `verify`, nothing needs downloading. |
 | `1` | An error. With `--all-games`, at least one game failed. |
-| `2` | Updates are available. `status` and `verify` return this code when at least one patch needs downloading. With `--all-games`, the updater returns it when no game failed and at least one game returned `2`. |
+| `2` | Updates are available. `status` and `verify` return this code when at least one patch, or at least one installed tool, needs downloading. With `--all-games`, the updater returns it when no game failed and at least one game returned `2`. |
 
 The exit codes let a launcher or a scheduled task check for updates without
 reading the output. For example, the following batch script updates only when
